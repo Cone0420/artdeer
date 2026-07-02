@@ -1,0 +1,17 @@
+import { NextResponse } from "next/server";
+import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
+import { getAnalyticsStats } from "@/lib/analytics";
+
+export async function GET(request: Request) {
+  if (!isAuthorizedAdminRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const stats = getAnalyticsStats();
+    return NextResponse.json(stats);
+  } catch (error) {
+    console.error("[analytics/stats]", error);
+    return NextResponse.json({ error: "Failed to load stats" }, { status: 500 });
+  }
+}

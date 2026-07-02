@@ -1,0 +1,74 @@
+.reviews-scroll-wrap {
+  padding-block: 14px;
+  margin-block: -14px;
+}
+
+.reviews-marquee-viewport {
+  overflow-x: hidden;
+  overflow-y: visible;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.reviews-marquee-viewport.is-dragging {
+  cursor: grabbing;
+}
+
+.reviews-marquee-viewport.is-dragging,
+.reviews-marquee-viewport.is-dragging * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reviews-marquee-viewport img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+.reviews-marquee-track {
+  display: flex;
+  width: max-content;
+  flex-shrink: 0;
+  will-change: transform;
+}
+
+.reviews-marquee-track > * {
+  flex-shrink: 0;
+  padding-block: 6px;
+}
+
+.reviews-scrollbar {
+  margin-top: 14px;
+  padding-inline: 2px;
+}
+
+.reviews-scrollbar-track {
+  position: relative;
+  height: 4px;
+  background: color-mix(in srgb, var(--artdear-purple, #8b7cff) 18%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reviews-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  min-width: 48px;
+  background: var(--artdear-purple, #8b7cff);
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
+  will-change: transform;
+}
+
+.reviews-scrollbar-thumb:hover,
+.reviews-scrollbar-thumb.is-dragging {
+  background: var(--artdear-purple-dark, #7a6cf0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reviews-marquee-track {
+    will-change: auto;
+  }
+}

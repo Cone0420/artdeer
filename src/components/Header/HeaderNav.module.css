@@ -1,0 +1,86 @@
+.link {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: color 0.3s ease;
+}
+
+@media (min-width: 80rem) {
+  .link {
+    font-size: 13px;
+  }
+}
+
+.link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 2px;
+  width: 0;
+  border-radius: 9999px;
+  background-color: var(--artdear-purple, #8b7cff);
+  transition: width 0.3s ease-out;
+  pointer-events: none;
+}
+
+.link:hover::after,
+.link[aria-current="page"]::after {
+  width: 100%;
+}
+
+.linkDefault {
+  color: var(--artdear-text-subtle, #666);
+}
+
+.linkDefault:hover {
+  color: var(--artdear-purple, #8b7cff);
+}
+
+.linkActive {
+  color: var(--artdear-purple, #8b7cff);
+}
+
+.mobileLink {
+  position: relative;
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  transition: color 0.3s ease;
+}
+
+.mobileLink::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 12px;
+  height: 2px;
+  width: 0;
+  border-radius: 9999px;
+  background-color: var(--artdear-purple, #8b7cff);
+  transition: width 0.3s ease-out;
+  pointer-events: none;
+}
+
+.mobileLink:hover::after,
+.mobileLink[aria-current="page"]::after {
+  width: 2rem;
+}
+
+.mobileLinkDefault {
+  color: var(--artdear-text, #1a1a1a);
+}
+
+.mobileLinkDefault:hover {
+  color: var(--artdear-purple, #8b7cff);
+}
+
+.mobileLinkActive {
+  color: var(--artdear-purple, #8b7cff);
+}
