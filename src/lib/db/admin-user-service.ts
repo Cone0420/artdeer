@@ -2,7 +2,9 @@ import { compareSync, hashSync } from "bcryptjs";
 import { randomUUID } from "crypto";
 import type { AdminRole, AdminUserPublic, AdminUserRecord } from "@/lib/admin-user-types";
 import { toAdminUserPublic } from "@/lib/admin-user-types";
+import type { DbPathDiagnostics } from "./db-path";
 import { getAppDb, syncAppDbWrites } from "./app-db";
+import { getDbPathDiagnostics } from "./db-path";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -85,16 +87,61 @@ export function getAdminUserByUsername(username: string): AdminUserRecord | null
   return row ? mapRow(row) : null;
 }
 
-export function authenticateAdminUser(username: string, password: string): AdminUserRecord | null {
-  const user = getAdminUserByUsername(username);
-  if (!user || !user.isActive) return null;
-  if (!verifyAdminPassword(password, user.passwordHash)) return null;
+export type AdminAuthDiagnostics = {
+  queriedUsername: string;
+  userFound: boolean;
+  isActive: boolean | null;
+  passwordHashLength: number | null;
+  bcryptCompareResult: boolean | null;
+  failureReason: string | null;
+  db: DbPathDiagnostics;
+};
+
+export function authenticateAdminUserWithDiagnostics(
+  username: string,
+  password: string
+): { user: AdminUserRecord | null; diagnostics: AdminAuthDiagnostics } {
+  const normalizedUsername = normalizeAdminUsername(username);
+  const dbDiagnostics = getDbPathDiagnostics();
+  const user = getAdminUserByUsername(normalizedUsername);
+
+  const diagnostics: AdminAuthDiagnostics = {
+    queriedUsername: normalizedUsername,
+    userFound: Boolean(user),
+    isActive: user?.isActive ?? null,
+    passwordHashLength: user?.passwordHash.length ?? null,
+    bcryptCompareResult: null,
+    failureReason: null,
+    db: dbDiagnostics,
+  };
+
+  if (!user) {
+    diagnostics.failureReason = "user_not_found";
+    return { user: null, diagnostics };
+  }
+
+  if (!user.isActive) {
+    diagnostics.failureReason = "user_inactive";
+    return { user: null, diagnostics };
+  }
+
+  const bcryptCompareResult = verifyAdminPassword(password, user.passwordHash);
+  diagnostics.bcryptCompareResult = bcryptCompareResult;
+
+  if (!bcryptCompareResult) {
+    diagnostics.failureReason = "password_mismatch";
+    return { user: null, diagnostics };
+  }
 
   const db = getAppDb();
   db.prepare(`UPDATE admin_users SET last_login_at = datetime('now') WHERE id = ?`).run(user.id);
   commitAdminUserWrite();
 
-  return getAdminUserById(user.id);
+  return { user: getAdminUserById(user.id), diagnostics };
+}
+
+export function authenticateAdminUser(username: string, password: string): AdminUserRecord | null {
+  return authenticateAdminUserWithDiagnostics(username, password).user;
 }
 
 export function createAdminUser(input: {

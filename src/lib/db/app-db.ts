@@ -3,8 +3,11 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { compareSync, hashSync } from "bcryptjs";
 import Database from "better-sqlite3";
-import { APP_DB_DIR, APP_DB_FILE, UPLOADS_DIR } from "./constants";
-import { resolveProjectPath } from "./project-root";
+import { APP_DB_DIR, APP_DB_FILE } from "./constants";
+import { getRuntimeDbPath, getRuntimeUploadsDir } from "./db-path";
+
+export { getDbPathDiagnostics } from "./db-path";
+export type { DbPathDiagnostics } from "./db-path";
 
 const globalForDb = globalThis as typeof globalThis & {
   __artdearAppDb?: Database.Database;
@@ -116,7 +119,7 @@ export function getAppDbPath(): string {
     return globalForDb.__artdearAppDbPath;
   }
 
-  const dbPath = resolveProjectPath(APP_DB_DIR, APP_DB_FILE);
+  const dbPath = getRuntimeDbPath();
   globalForDb.__artdearAppDbPath = dbPath;
   return dbPath;
 }
@@ -138,7 +141,7 @@ export function syncAppDbWrites(): void {
 }
 
 export function getUploadsDir(): string {
-  const uploadsDir = resolveProjectPath(APP_DB_DIR, UPLOADS_DIR);
+  const uploadsDir = getRuntimeUploadsDir();
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
@@ -160,7 +163,7 @@ export function getAppDb(): Database.Database {
   getUploadsDir();
 
   const db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
+  db.pragma(process.env.VERCEL === "1" ? "journal_mode = DELETE" : "journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   initializeSchema(db);
   seedDefaultAdminUser(db);

@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   serverExternalPackages: ["better-sqlite3", "bcryptjs"],
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./data/artdear.db", "./data/analytics.db", "./data/style-memory.json"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
