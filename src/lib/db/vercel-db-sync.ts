@@ -1,14 +1,32 @@
 import fs from "fs";
+import os from "os";
+import path from "path";
 import Database from "better-sqlite3";
 import { closeAppDbConnection } from "./app-db";
 import { getBundledDbPath, getVercelRuntimeDbPath, isVercelRuntime } from "./db-path";
 
 type PortfolioRow = { id: string };
 
+function resolveReadableDbPath(sourcePath: string): string {
+  if (!fs.existsSync(sourcePath)) return sourcePath;
+  if (!isVercelRuntime()) return sourcePath;
+
+  const tmpPath = path.join(os.tmpdir(), `artdear-read-${path.basename(sourcePath)}`);
+  fs.copyFileSync(sourcePath, tmpPath);
+  return tmpPath;
+}
+
+function openReadonlyDatabase(dbPath: string): Database.Database {
+  const readablePath = resolveReadableDbPath(dbPath);
+  const db = new Database(readablePath, { readonly: true, fileMustExist: true });
+  db.pragma("journal_mode = DELETE");
+  return db;
+}
+
 function readPortfolioItems(dbPath: string): PortfolioRow[] {
   if (!fs.existsSync(dbPath)) return [];
 
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  const db = openReadonlyDatabase(dbPath);
   try {
     const row = db
       .prepare(`SELECT data_json FROM data_collections WHERE collection_key = 'portfolio'`)
@@ -25,6 +43,14 @@ function readPortfolioItems(dbPath: string): PortfolioRow[] {
 function writePortfolioItems(dbPath: string, items: PortfolioRow[]): void {
   const db = new Database(dbPath);
   try {
+    db.pragma("journal_mode = DELETE");
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS data_collections (
+        collection_key TEXT PRIMARY KEY,
+        data_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
     db.prepare(
       `
       INSERT INTO data_collections (collection_key, data_json, updated_at)
@@ -37,6 +63,12 @@ function writePortfolioItems(dbPath: string, items: PortfolioRow[]): void {
   } finally {
     db.close();
   }
+}
+
+function copyBundledDbToRuntime(bundledPath: string, runtimePath: string): void {
+  closeAppDbConnection();
+  const readableBundled = resolveReadableDbPath(bundledPath);
+  fs.copyFileSync(readableBundled, runtimePath);
 }
 
 function mergePortfolioItems<T extends PortfolioRow>(runtimeItems: T[], bundledItems: T[]): T[] {
@@ -78,8 +110,7 @@ export function mergeBundledPortfolioIntoRuntime(): {
   }
 
   if (!fs.existsSync(runtimePath)) {
-    closeAppDbConnection();
-    fs.copyFileSync(bundledPath, runtimePath);
+    copyBundledDbToRuntime(bundledPath, runtimePath);
     const ids = getPortfolioIdsFromDbPath(runtimePath);
     return { merged: true, runtimeIds: ids, bundledIds: ids };
   }
@@ -101,7 +132,7 @@ export function mergeBundledPortfolioIntoRuntime(): {
   closeAppDbConnection();
 
   if (runtimeItems.length === 0 && bundledItems.length > 0) {
-    fs.copyFileSync(bundledPath, runtimePath);
+    copyBundledDbToRuntime(bundledPath, runtimePath);
     return { merged: true, runtimeIds: bundledIds, bundledIds };
   }
 

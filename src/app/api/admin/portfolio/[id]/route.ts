@@ -63,18 +63,18 @@ export async function DELETE(request: Request, context: RouteContext) {
   const { id: rawId } = await context.params;
   const id = normalizeRouteId(rawId);
 
-  const diagnostics = !useSupabaseDatabase() ? getPortfolioDeleteDiagnostics(id) : null;
-  const itemsBeforeDelete = await getPortfolioItemsFromDb().catch(() => []);
-  const sqliteIds = itemsBeforeDelete.map((item) => item.id);
-
-  console.info("[portfolio-delete] API DELETE handler", {
-    rawId,
-    id,
-    sqliteIds,
-    diagnostics,
-  });
-
   try {
+    const diagnostics = !useSupabaseDatabase() ? getPortfolioDeleteDiagnostics(id) : null;
+    const itemsBeforeDelete = await getPortfolioItemsFromDb().catch(() => []);
+    const sqliteIds = itemsBeforeDelete.map((item) => item.id);
+
+    console.info("[portfolio-delete] API DELETE handler", {
+      rawId,
+      id,
+      sqliteIds,
+      diagnostics,
+    });
+
     const deleted = await deletePortfolioItemInDb(id);
     console.info("[portfolio-delete] API delete result", { id, deleted });
 
@@ -93,6 +93,9 @@ export async function DELETE(request: Request, context: RouteContext) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return apiErrorResponse("api/admin/portfolio/[id] DELETE", error, "delete_failed", 500, { id });
+    return apiErrorResponse("api/admin/portfolio/[id] DELETE", error, "delete_failed", 500, {
+      id,
+      rawId,
+    });
   }
 }

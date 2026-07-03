@@ -12,7 +12,7 @@
     "sync-review-avatars": "node scripts/sync-review-avatar-manifest.mjs",
     "sync-favicon": "node scripts/sync-favicon.mjs",
     "migrate-to-supabase": "node scripts/migrate-sqlite-to-supabase.mjs",
-    "prebuild": "node scripts/sync-review-avatar-manifest.mjs && node scripts/sync-favicon.mjs"
+    "prebuild": "node scripts/sync-review-avatar-manifest.mjs && node scripts/sync-favicon.mjs && node scripts/prepare-sqlite-for-deploy.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
