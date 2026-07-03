@@ -3,33 +3,17 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
+import { loadProjectEnv } from "./load-env.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
 const schemaPath = path.join(rootDir, "supabase", "migrations", "001_initial_schema.sql");
 
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return;
-  for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (!(key in process.env)) process.env[key] = value;
-  }
-}
+loadProjectEnv();
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Missing ${name} in .env.local`);
+  if (!value) throw new Error(`Missing ${name} in .env.supabase or .env.local`);
   return value;
 }
 

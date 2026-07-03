@@ -3,36 +3,14 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
+import { loadProjectEnv } from "./load-env.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
 const dbPath = path.join(rootDir, "data", "artdear.db");
 const uploadsDir = path.join(rootDir, "data", "uploads");
 
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return;
-
-  for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
-  }
-}
+loadProjectEnv();
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
@@ -49,9 +27,6 @@ function chunk(items, size) {
   }
   return result;
 }
-
-loadEnvFile(path.join(rootDir, ".env.local"));
-loadEnvFile(path.join(rootDir, ".env"));
 
 const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
 const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");

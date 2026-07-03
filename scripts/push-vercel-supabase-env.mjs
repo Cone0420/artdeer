@@ -2,40 +2,43 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
+import { loadProjectEnv } from "./load-env.mjs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.join(__dirname, "..");
+const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const REQUIRED_VARS = [
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
-];
+const REQUIRED_VARS = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
 const OPTIONAL_VARS = [
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_STORAGE_BUCKET",
   "ADMIN_DEFAULT_PASSWORD",
 ];
 
-function loadEnvFile(filePath) {
-  const values = {};
-  if (!fs.existsSync(filePath)) return values;
-
-  for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
+function readEnvValues() {
+  loadProjectEnv();
+  const merged = { ...process.env };
+  for (const fileName of [".env", ".env.local", ".env.supabase"]) {
+    const filePath = path.join(rootDir, fileName);
+    if (!fs.existsSync(filePath)) continue;
+    for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let value = trimmed.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (value.includes(`${key}=`)) {
+        value = value.slice(value.lastIndexOf(`${key}=`) + key.length + 1);
+      }
+      merged[key] = value;
     }
-    values[key] = value;
   }
-  return values;
+  return merged;
 }
 
 function addVercelEnv(name, value, environment) {
@@ -49,22 +52,13 @@ function addVercelEnv(name, value, environment) {
 }
 
 function main() {
-  const envLocal = loadEnvFile(path.join(rootDir, ".env.local"));
-  const envFile = loadEnvFile(path.join(rootDir, ".env"));
-  const merged = { ...envFile, ...envLocal, ...process.env };
+  const merged = readEnvValues();
 
   const missing = REQUIRED_VARS.filter((key) => !merged[key]?.trim());
   if (missing.length > 0) {
     console.error(
-      "Missing Supabase credentials. Add these to .env.local first:\n" +
-        missing.map((key) => `  ${key}=...`).join("\n") +
-        "\n\nSetup steps:\n" +
-        "  1. Create a Supabase project at https://supabase.com/dashboard\n" +
-        "  2. Run supabase/migrations/001_initial_schema.sql in SQL Editor\n" +
-        "  3. Create a public Storage bucket named \"media\"\n" +
-        "  4. Copy Project URL + service_role key into .env.local\n" +
-        "  5. npm run migrate-to-supabase\n" +
-        "  6. npm run push-vercel-env"
+      "Missing Supabase credentials in .env.supabase:\n" +
+        missing.map((key) => `  ${key}=...`).join("\n")
     );
     process.exit(1);
   }

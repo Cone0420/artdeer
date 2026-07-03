@@ -1,0 +1,11 @@
+---
+description: Never overwrite .env.local unless the user pastes secret values in the same message
+globs: .env.local
+alwaysApply: true
+---
+
+Do NOT rewrite or reset `.env.local` to empty templates.
+
+- Supabase secrets belong in `.env.supabase` (user-edited).
+- Only update env files when the user provides explicit values in the current message.
+- Preserve existing OPENAI_API_KEY and VERCEL_OIDC_TOKEN when editing env files.
