@@ -12,6 +12,8 @@
     "sync-review-avatars": "node scripts/sync-review-avatar-manifest.mjs",
     "sync-favicon": "node scripts/sync-favicon.mjs",
     "migrate-to-supabase": "node scripts/migrate-sqlite-to-supabase.mjs",
+    "setup-supabase": "node scripts/setup-supabase.mjs",
+    "setup-production": "node scripts/setup-supabase.mjs && node scripts/migrate-sqlite-to-supabase.mjs && node scripts/push-vercel-supabase-env.mjs",
     "push-vercel-env": "node scripts/push-vercel-supabase-env.mjs",
     "prebuild": "node scripts/sync-review-avatar-manifest.mjs && node scripts/sync-favicon.mjs && node scripts/prepare-sqlite-for-deploy.mjs"
   },
@@ -40,6 +42,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "pg": "^8.22.0",
     "png-to-ico": "^3.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"

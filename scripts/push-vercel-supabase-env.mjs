@@ -6,8 +6,15 @@ import { execSync } from "child_process";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
 
-const REQUIRED_VARS = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
-const OPTIONAL_VARS = ["SUPABASE_STORAGE_BUCKET", "ADMIN_DEFAULT_PASSWORD"];
+const REQUIRED_VARS = [
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+];
+const OPTIONAL_VARS = [
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_STORAGE_BUCKET",
+  "ADMIN_DEFAULT_PASSWORD",
+];
 
 function loadEnvFile(filePath) {
   const values = {};
