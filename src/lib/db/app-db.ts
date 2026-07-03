@@ -115,13 +115,7 @@ function seedDefaultAdminUser(db: Database.Database) {
 }
 
 export function getAppDbPath(): string {
-  if (globalForDb.__artdearAppDbPath) {
-    return globalForDb.__artdearAppDbPath;
-  }
-
-  const dbPath = getRuntimeDbPath();
-  globalForDb.__artdearAppDbPath = dbPath;
-  return dbPath;
+  return getRuntimeDbPath();
 }
 
 export function closeAppDbConnection(): void {
@@ -133,6 +127,7 @@ export function closeAppDbConnection(): void {
     // Ignore close errors during hot reload.
   }
   globalForDb.__artdearAppDb = undefined;
+  globalForDb.__artdearAppDbPath = undefined;
 }
 
 export function syncAppDbWrites(): void {
@@ -151,9 +146,11 @@ export function getUploadsDir(): string {
 export function getAppDb(): Database.Database {
   const dbPath = getAppDbPath();
 
-  if (globalForDb.__artdearAppDb) {
+  if (globalForDb.__artdearAppDb && globalForDb.__artdearAppDbPath === dbPath) {
     return globalForDb.__artdearAppDb;
   }
+
+  closeAppDbConnection();
 
   const dataDir = path.dirname(dbPath);
   if (!fs.existsSync(dataDir)) {
@@ -169,5 +166,6 @@ export function getAppDb(): Database.Database {
   seedDefaultAdminUser(db);
 
   globalForDb.__artdearAppDb = db;
+  globalForDb.__artdearAppDbPath = dbPath;
   return db;
 }

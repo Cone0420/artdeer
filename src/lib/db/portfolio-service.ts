@@ -5,9 +5,15 @@ import {
   type PortfolioItemInput,
 } from "@/components/Portfolio/portfolio-data";
 import { normalizePortfolioTags } from "@/lib/portfolio-tags";
+import { useSupabaseDatabase } from "./provider";
 import { readCollection, writeCollection } from "./collection-service";
+import { ensurePortfolioIdInRuntimeDb, mergeBundledPortfolioIntoRuntime } from "./vercel-db-sync";
 
 export async function getPortfolioItemsFromDb(): Promise<PortfolioItem[]> {
+  if (!useSupabaseDatabase()) {
+    mergeBundledPortfolioIntoRuntime();
+  }
+
   const items = await readCollection<PortfolioItem[]>("portfolio");
   return items.map(normalizePortfolioItem);
 }
@@ -59,6 +65,10 @@ export async function updatePortfolioItemInDb(
   id: string,
   input: PortfolioItemInput
 ): Promise<PortfolioItem | null> {
+  if (!useSupabaseDatabase()) {
+    ensurePortfolioIdInRuntimeDb(id);
+  }
+
   const items = await getPortfolioItemsFromDb();
   const index = items.findIndex((item) => item.id === id);
   if (index === -1) return null;
@@ -75,6 +85,10 @@ export async function updatePortfolioItemInDb(
 }
 
 export async function deletePortfolioItemInDb(id: string): Promise<boolean> {
+  if (!useSupabaseDatabase()) {
+    ensurePortfolioIdInRuntimeDb(id);
+  }
+
   const items = await getPortfolioItemsFromDb();
   const next = items.filter((item) => item.id !== id);
   if (next.length === items.length) return false;
@@ -86,6 +100,10 @@ export async function reorderPortfolioItemInDb(
   id: string,
   direction: "up" | "down"
 ): Promise<boolean> {
+  if (!useSupabaseDatabase()) {
+    ensurePortfolioIdInRuntimeDb(id);
+  }
+
   const items = await getPortfolioItemsFromDb();
   const index = items.findIndex((item) => item.id === id);
   if (index === -1) return false;
