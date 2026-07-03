@@ -1,5 +1,4 @@
-export { getAppDb as getAnalyticsDb } from "@/lib/db/app-db";
-export { APP_DB_DIR as ANALYTICS_DB_DIR, APP_DB_FILE as ANALYTICS_DB_FILE } from "@/lib/db/constants";
+export { getSupabaseAdmin as getAnalyticsDb } from "@/lib/supabase/server";
 export { formatDuration, formatDurationClock } from "./format-duration";
 export {
   getAnalyticsStats,

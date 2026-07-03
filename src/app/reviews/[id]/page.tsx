@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/ui/page-background";
 import { ReviewDetail } from "@/components/Reviews/ReviewDetail";
 import { createPageMetadata } from "@/lib/seo";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getServerReviewById, getServerReviewIds } from "@/lib/reviews-server";
 import { maskReviewNickname } from "@/lib/reviews-data";
 
@@ -17,13 +18,15 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export function generateStaticParams() {
-  return getServerReviewIds().map((id) => ({ id }));
+export async function generateStaticParams() {
+  if (!isSupabaseConfigured()) return [];
+  const ids = await getServerReviewIds();
+  return ids.map((id) => ({ id }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const item = getServerReviewById(id);
+  const item = await getServerReviewById(id);
 
   if (!item) {
     return createPageMetadata({
@@ -43,7 +46,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ReviewDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const item = getServerReviewById(id);
+  const item = await getServerReviewById(id);
 
   if (!item) {
     notFound();

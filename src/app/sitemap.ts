@@ -2,11 +2,12 @@ import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site-config";
 import { getServerPortfolioIds } from "@/lib/portfolio-server";
 import { getServerReviewIds } from "@/lib/reviews-server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
-  const portfolioIds = getServerPortfolioIds();
-  const reviewIds = getServerReviewIds();
+  const portfolioIds = isSupabaseConfigured() ? await getServerPortfolioIds() : [];
+  const reviewIds = isSupabaseConfigured() ? await getServerReviewIds() : [];
 
   return [
     {

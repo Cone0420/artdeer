@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, context: RouteContext) {
-  const session = getAuthorizedAdminSession(request);
+  const session = await getAuthorizedAdminSession(request);
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -40,7 +40,7 @@ export async function PUT(request: Request, context: RouteContext) {
       isActive?: boolean;
     };
 
-    const existing = getAdminUserById(id);
+    const existing = await getAdminUserById(id);
     if (!existing) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
@@ -75,7 +75,7 @@ export async function PUT(request: Request, context: RouteContext) {
       if (
         existing.role === "super_admin" &&
         updatePayload.role === "admin" &&
-        countSuperAdmins(id) === 0
+        (await countSuperAdmins(id)) === 0
       ) {
         return NextResponse.json({ error: "last_super_admin" }, { status: 400 });
       }
@@ -83,13 +83,13 @@ export async function PUT(request: Request, context: RouteContext) {
       if (
         existing.role === "super_admin" &&
         updatePayload.isActive === false &&
-        countSuperAdmins(id) === 0
+        (await countSuperAdmins(id)) === 0
       ) {
         return NextResponse.json({ error: "last_super_admin" }, { status: 400 });
       }
     }
 
-    const user = updateAdminUser(id, updatePayload);
+    const user = await updateAdminUser(id, updatePayload);
     return NextResponse.json({ user });
   } catch (error) {
     if (error instanceof Error && error.message === "username_exists") {
@@ -100,12 +100,12 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const session = getAuthorizedAdminSession(request);
+  const session = await getAuthorizedAdminSession(request);
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  if (!isSuperAdminRequest(request)) {
+  if (!(await isSuperAdminRequest(request))) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -114,17 +114,17 @@ export async function DELETE(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "cannot_delete_self" }, { status: 400 });
   }
 
-  const existing = getAdminUserById(id);
+  const existing = await getAdminUserById(id);
   if (!existing) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  if (existing.role === "super_admin" && countSuperAdmins(id) === 0) {
+  if (existing.role === "super_admin" && (await countSuperAdmins(id)) === 0) {
     return NextResponse.json({ error: "last_super_admin" }, { status: 400 });
   }
 
   try {
-    deleteAdminUser(id);
+    await deleteAdminUser(id);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "delete_failed" }, { status: 500 });

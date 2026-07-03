@@ -15,12 +15,12 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const data = readCollection(collection as "works");
+    const data = await readCollection(collection as "works");
     return NextResponse.json(data);
   } catch (error) {
     console.error(`[api/admin/data/${collection}]`, error);

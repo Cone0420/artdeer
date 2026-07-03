@@ -2,7 +2,9 @@ import { parseAdminToken } from "@/lib/admin-auth";
 import type { AdminSession } from "@/lib/admin-user-types";
 import { getAdminUserById } from "@/lib/db/admin-user-service";
 
-export function getAuthorizedAdminSession(request: Request): AdminSession | null {
+export async function getAuthorizedAdminSession(
+  request: Request
+): Promise<AdminSession | null> {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) return null;
 
@@ -12,7 +14,7 @@ export function getAuthorizedAdminSession(request: Request): AdminSession | null
   const payload = parseAdminToken(token);
   if (!payload) return null;
 
-  const user = getAdminUserById(payload.uid);
+  const user = await getAdminUserById(payload.uid);
   if (!user || !user.isActive) return null;
 
   return {
@@ -23,12 +25,12 @@ export function getAuthorizedAdminSession(request: Request): AdminSession | null
   };
 }
 
-export function isAuthorizedAdminRequest(request: Request): boolean {
-  return getAuthorizedAdminSession(request) !== null;
+export async function isAuthorizedAdminRequest(request: Request): Promise<boolean> {
+  return (await getAuthorizedAdminSession(request)) !== null;
 }
 
-export function isSuperAdminRequest(request: Request): boolean {
-  return getAuthorizedAdminSession(request)?.role === "super_admin";
+export async function isSuperAdminRequest(request: Request): Promise<boolean> {
+  return (await getAuthorizedAdminSession(request))?.role === "super_admin";
 }
 
 export function getClientIp(request: Request): string {

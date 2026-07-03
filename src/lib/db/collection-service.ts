@@ -1,6 +1,6 @@
 import { FAQ_SEED_VERSION } from "@/lib/faq-data";
 import type { FaqItem } from "@/lib/faq-data";
-import { getAppDb, syncAppDbWrites } from "./app-db";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
 import {
   ALL_COLLECTION_KEYS,
   defaultMeta,
@@ -9,81 +9,93 @@ import {
 } from "./seed-data";
 import type { CollectionKey } from "./constants";
 
-function collectionExists(key: CollectionKey): boolean {
-  const db = getAppDb();
-  const row = db
-    .prepare(`SELECT collection_key FROM data_collections WHERE collection_key = ?`)
-    .get(key) as { collection_key: string } | undefined;
-  return Boolean(row);
+async function collectionExists(key: CollectionKey): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("data_collections")
+    .select("collection_key")
+    .eq("collection_key", key)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
 }
 
-export function ensureDbSeeded() {
-  const db = getAppDb();
-  const count = db
-    .prepare(`SELECT COUNT(*) AS count FROM data_collections`)
-    .get() as { count: number };
+export async function ensureDbSeeded(): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const { count, error } = await supabase
+    .from("data_collections")
+    .select("*", { count: "exact", head: true });
 
-  if (count.count === 0) {
-    const insert = db.prepare(`
-      INSERT INTO data_collections (collection_key, data_json, updated_at)
-      VALUES (?, ?, datetime('now'))
-    `);
+  if (error) throw error;
+  if ((count ?? 0) > 0) return;
 
-    for (const key of ALL_COLLECTION_KEYS) {
-      insert.run(key, JSON.stringify(getDefaultCollectionData(key)));
-    }
-  }
+  const rows = ALL_COLLECTION_KEYS.map((key) => ({
+    collection_key: key,
+    data_json: getDefaultCollectionData(key),
+  }));
+
+  const { error: insertError } = await supabase.from("data_collections").insert(rows);
+  if (insertError) throw insertError;
 }
 
-export function readCollection<T>(key: CollectionKey): T {
-  ensureDbSeeded();
-  const db = getAppDb();
+export async function readCollection<T>(key: CollectionKey): Promise<T> {
+  await ensureDbSeeded();
+  const supabase = getSupabaseAdmin();
 
   if (key === "faq") {
-    const meta = readCollection<MetaCollection>("meta");
+    const meta = await readCollection<MetaCollection>("meta");
     if (meta.faqSeedVersion !== FAQ_SEED_VERSION) {
       const seeded = getDefaultCollectionData("faq") as FaqItem[];
-      writeCollection("faq", seeded);
-      writeCollection("meta", { ...meta, faqSeedVersion: FAQ_SEED_VERSION });
+      await writeCollection("faq", seeded);
+      await writeCollection("meta", { ...meta, faqSeedVersion: FAQ_SEED_VERSION });
       return seeded as T;
     }
   }
 
-  const row = db
-    .prepare(`SELECT data_json FROM data_collections WHERE collection_key = ?`)
-    .get(key) as { data_json: string } | undefined;
+  const { data, error } = await supabase
+    .from("data_collections")
+    .select("data_json")
+    .eq("collection_key", key)
+    .maybeSingle();
 
-  if (!row) {
+  if (error) throw error;
+
+  if (!data) {
     const fallback = getDefaultCollectionData(key);
-    writeCollection(key, fallback);
+    await writeCollection(key, fallback);
     return fallback as T;
   }
 
-  return JSON.parse(row.data_json) as T;
+  return data.data_json as T;
 }
 
-export function writeCollection<T>(key: CollectionKey, data: T) {
-  ensureDbSeeded();
-  const db = getAppDb();
+export async function writeCollection<T>(key: CollectionKey, data: T): Promise<void> {
+  await ensureDbSeeded();
+  const supabase = getSupabaseAdmin();
 
-  db.prepare(
-    `
-    INSERT INTO data_collections (collection_key, data_json, updated_at)
-    VALUES (?, ?, datetime('now'))
-    ON CONFLICT(collection_key) DO UPDATE SET
-      data_json = excluded.data_json,
-      updated_at = excluded.updated_at
-  `
-  ).run(key, JSON.stringify(data));
-  syncAppDbWrites();
+  const payload = JSON.parse(JSON.stringify(data));
+
+  const { error } = await supabase.from("data_collections").upsert(
+    {
+      collection_key: key,
+      data_json: payload,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "collection_key" }
+  );
+
+  if (error) {
+    throw new Error(`writeCollection(${key}): ${error.message}`);
+  }
 
   if (key === "faq") {
-    const meta = readCollection<MetaCollection>("meta");
-    writeCollection("meta", { ...defaultMeta, ...meta, faqSeedVersion: FAQ_SEED_VERSION });
+    const meta = await readCollection<MetaCollection>("meta");
+    await writeCollection("meta", { ...defaultMeta, ...meta, faqSeedVersion: FAQ_SEED_VERSION });
   }
 }
 
-export function hasCollection(key: CollectionKey): boolean {
-  ensureDbSeeded();
+export async function hasCollection(key: CollectionKey): Promise<boolean> {
+  await ensureDbSeeded();
   return collectionExists(key);
 }

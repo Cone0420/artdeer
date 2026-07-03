@@ -566,7 +566,8 @@ export function AdminPortfolioManager() {
       setDeleteTarget(null);
     } catch (error) {
       console.error("[portfolio-delete] delete failed", { id: item.id, error });
-      alert("삭제에 실패했습니다.");
+      const message = error instanceof Error ? error.message : "삭제에 실패했습니다.";
+      alert(message);
     } finally {
       setDeleteLoading(false);
     }

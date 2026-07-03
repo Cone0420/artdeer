@@ -6,11 +6,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const status = getStyleMemoryStatus();
+  const status = await getStyleMemoryStatus();
   return NextResponse.json({
     isTrained: status.isTrained,
     trainedAt: status.trainedAt,

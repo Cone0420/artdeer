@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid_credentials" }, { status: 400 });
     }
 
-    const { user, diagnostics } = authenticateAdminUserWithDiagnostics(username, password);
+    const { user, diagnostics } = await authenticateAdminUserWithDiagnostics(username, password);
 
     console.info("[admin-login]", {
       queriedUsername: diagnostics.queriedUsername,
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       isActive: diagnostics.isActive,
       bcryptCompareResult: diagnostics.bcryptCompareResult,
       failureReason: diagnostics.failureReason,
-      db: diagnostics.db,
+      database: diagnostics.database,
     });
 
     if (!user) {

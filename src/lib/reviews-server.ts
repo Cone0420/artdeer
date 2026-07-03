@@ -5,19 +5,21 @@ import { sortReviewsByNewest } from "@/lib/reviews-sort";
 
 type LegacyReviewItem = Parameters<typeof normalizeReviewItem>[0];
 
-function getVisibleServerReviews(): ReviewItem[] {
-  const items = readCollection<LegacyReviewItem[]>("reviews");
+async function getVisibleServerReviews(): Promise<ReviewItem[]> {
+  const items = await readCollection<LegacyReviewItem[]>("reviews");
   return sortReviewsByNewest(items.map(normalizeReviewItem)).filter((item) => item.visible);
 }
 
-export function getServerReviews(): ReviewItem[] {
+export async function getServerReviews(): Promise<ReviewItem[]> {
   return getVisibleServerReviews();
 }
 
-export function getServerReviewById(id: string): ReviewItem | undefined {
-  return getVisibleServerReviews().find((item) => item.id === id);
+export async function getServerReviewById(id: string): Promise<ReviewItem | undefined> {
+  const items = await getVisibleServerReviews();
+  return items.find((item) => item.id === id);
 }
 
-export function getServerReviewIds(): string[] {
-  return getVisibleServerReviews().map((item) => item.id);
+export async function getServerReviewIds(): Promise<string[]> {
+  const items = await getVisibleServerReviews();
+  return items.map((item) => item.id);
 }

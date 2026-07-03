@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/api/route-error";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import {
   deletePortfolioItemInDb,
@@ -13,7 +14,7 @@ export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, context: RouteContext) {
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -24,7 +25,7 @@ export async function PUT(request: Request, context: RouteContext) {
       tagsInput?: string;
     };
 
-    const item = updatePortfolioItemInDb(id, {
+    const item = await updatePortfolioItemInDb(id, {
       ...body,
       tags:
         body.tags ??
@@ -36,13 +37,13 @@ export async function PUT(request: Request, context: RouteContext) {
     }
 
     return NextResponse.json({ item });
-  } catch {
-    return NextResponse.json({ error: "update_failed" }, { status: 500 });
+  } catch (error) {
+    return apiErrorResponse("api/admin/portfolio/[id] PUT", error, "update_failed", 500, { id });
   }
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     console.warn("[portfolio-delete] API unauthorized");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -50,12 +51,16 @@ export async function DELETE(request: Request, context: RouteContext) {
   const { id } = await context.params;
   console.info("[portfolio-delete] API DELETE handler", { id });
 
-  const deleted = deletePortfolioItemInDb(id);
-  console.info("[portfolio-delete] API delete result", { id, deleted });
+  try {
+    const deleted = await deletePortfolioItemInDb(id);
+    console.info("[portfolio-delete] API delete result", { id, deleted });
 
-  if (!deleted) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    if (!deleted) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return apiErrorResponse("api/admin/portfolio/[id] DELETE", error, "delete_failed", 500, { id });
   }
-
-  return NextResponse.json({ ok: true });
 }

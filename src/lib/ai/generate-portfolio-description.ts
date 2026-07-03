@@ -146,9 +146,9 @@ function isReadableFilename(filename: string): boolean {
   return !/^[0-9a-f-]{20,}$/i.test(base);
 }
 
-function resolveImageFilename(imageUrl?: string | null): string | null {
+async function resolveImageFilename(imageUrl?: string | null): Promise<string | null> {
   if (!imageUrl) return null;
-  const filename = getMediaFilenameFromUrl(imageUrl);
+  const filename = await getMediaFilenameFromUrl(imageUrl);
   if (!filename || !isReadableFilename(filename)) return null;
   return filename.replace(/\.[^.]+$/, "");
 }
@@ -209,7 +209,9 @@ function buildTagSentenceWithStyle(tags: string[]): string {
   return buildTagSentence(tags);
 }
 
-export function generatePortfolioContent(input: GenerateInput): PortfolioDescriptionContent {
+export async function generatePortfolioContent(
+  input: GenerateInput
+): Promise<PortfolioDescriptionContent> {
   const title = input.title.trim();
   const category = input.category.trim();
   if (!title) throw new Error("title_required");
@@ -224,7 +226,7 @@ export function generatePortfolioContent(input: GenerateInput): PortfolioDescrip
   const detailParts = pickRandomUnique(resolveDetailSentences(), 2);
   const titlePrefix = fillTemplate(pickRandom(titleMentions), tagPhrase, title);
 
-  const imageFilename = resolveImageFilename(input.imageUrl);
+  const imageFilename = await resolveImageFilename(input.imageUrl);
   const imagePrefix = imageFilename
     ? pickRandom([
         `「${imageFilename}」 이미지의 분위기를 참고해 `,
@@ -244,6 +246,6 @@ export function generatePortfolioContent(input: GenerateInput): PortfolioDescrip
 }
 
 /** @deprecated use generatePortfolioContent */
-export function generatePortfolioDescription(input: GenerateInput): string {
-  return generatePortfolioContent(input).description;
+export async function generatePortfolioDescription(input: GenerateInput): Promise<string> {
+  return (await generatePortfolioContent(input)).description;
 }

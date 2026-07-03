@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ updated: false, reason: "missing_session" }, { status: 400 });
     }
 
-    const updated = updateVisitDuration({
+    const updated = await updateVisitDuration({
       visitId,
       sessionId,
       durationSeconds,

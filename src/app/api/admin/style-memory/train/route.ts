@@ -6,12 +6,12 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   try {
-    const profile = trainStyleMemoryFromDb();
+    const profile = await trainStyleMemoryFromDb();
 
     return NextResponse.json({
       ok: true,

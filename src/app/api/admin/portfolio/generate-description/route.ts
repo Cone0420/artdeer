@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "category_required" }, { status: 400 });
     }
 
-    const content = generatePortfolioContent({ title, category, tags, imageUrl });
+    const content = await generatePortfolioContent({ title, category, tags, imageUrl });
     return NextResponse.json(content);
   } catch (error) {
     if (error instanceof Error) {

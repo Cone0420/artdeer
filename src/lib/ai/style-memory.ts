@@ -206,15 +206,15 @@ export function writeStyleMemoryProfile(profile: StyleMemoryProfile): StyleMemor
   return profile;
 }
 
-export function trainStyleMemoryFromDb(): StyleMemoryProfile {
-  const items = getPortfolioItemsFromDb();
+export async function trainStyleMemoryFromDb(): Promise<StyleMemoryProfile> {
+  const items = await getPortfolioItemsFromDb();
   const profile = analyzePortfolioStyle(items);
   return writeStyleMemoryProfile(profile);
 }
 
-export function getStyleMemoryStatus(): StyleMemoryStatus {
+export async function getStyleMemoryStatus(): Promise<StyleMemoryStatus> {
   const profile = readStyleMemoryProfile();
-  const items = getPortfolioItemsFromDb();
+  const items = await getPortfolioItemsFromDb();
   const currentPortfolioCount = items.length;
   const currentTagCount = countTags(items);
   const currentCategoryCount = countCategories(items);
@@ -244,6 +244,6 @@ export function getStyleMemoryStatus(): StyleMemoryStatus {
   };
 }
 
-export function checkNeedsStyleRetrain(): boolean {
-  return getStyleMemoryStatus().needsRetrain;
+export async function checkNeedsStyleRetrain(): Promise<boolean> {
+  return (await getStyleMemoryStatus()).needsRetrain;
 }

@@ -1,4 +1,5 @@
 import { getAdminToken } from "@/lib/admin-auth";
+import { parseApiError } from "@/lib/api/parse-api-error";
 import type { CollectionKey } from "@/lib/db/constants";
 
 const UPDATE_EVENTS: Partial<Record<CollectionKey, string>> = {
@@ -31,7 +32,7 @@ export async function saveCollection<T>(collection: CollectionKey, data: T): Pro
   });
 
   if (!response.ok) {
-    throw new Error(`failed_to_save_${collection}`);
+    throw new Error(await parseApiError(response));
   }
 
   if (typeof window !== "undefined") {
@@ -54,7 +55,7 @@ export async function uploadMediaFile(file: File): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error("failed_to_upload_media");
+    throw new Error(await parseApiError(response));
   }
 
   const data = (await response.json()) as { url: string };

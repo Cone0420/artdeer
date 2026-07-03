@@ -2,18 +2,13 @@ import { compareSync, hashSync } from "bcryptjs";
 import { randomUUID } from "crypto";
 import type { AdminRole, AdminUserPublic, AdminUserRecord } from "@/lib/admin-user-types";
 import { toAdminUserPublic } from "@/lib/admin-user-types";
-import type { DbPathDiagnostics } from "./db-path";
-import { getAppDb, syncAppDbWrites } from "./app-db";
-import { getDbPathDiagnostics } from "./db-path";
+import { getAdminDefaultPassword } from "@/lib/supabase/env";
+import { getSupabaseAdmin, getSupabaseDiagnostics } from "@/lib/supabase/server";
 
 const BCRYPT_ROUNDS = 12;
 
 function normalizeAdminUsername(username: string): string {
   return username.trim().toLowerCase();
-}
-
-function commitAdminUserWrite(): void {
-  syncAppDbWrites();
 }
 
 type AdminUserRow = {
@@ -22,7 +17,7 @@ type AdminUserRow = {
   password_hash: string;
   display_name: string | null;
   role: AdminRole;
-  is_active: number;
+  is_active: boolean;
   created_at: string;
   last_login_at: string | null;
 };
@@ -34,7 +29,7 @@ function mapRow(row: AdminUserRow): AdminUserRecord {
     passwordHash: row.password_hash,
     displayName: row.display_name,
     role: row.role,
-    isActive: row.is_active === 1,
+    isActive: row.is_active,
     createdAt: row.created_at,
     lastLoginAt: row.last_login_at,
   };
@@ -49,42 +44,64 @@ export function verifyAdminPassword(password: string, passwordHash: string): boo
   return compareSync(password, passwordHash);
 }
 
-export function listAdminUsers(): AdminUserPublic[] {
-  const db = getAppDb();
-  const rows = db
-    .prepare(
-      `SELECT id, username, password_hash, display_name, role, is_active, created_at, last_login_at
-       FROM admin_users
-       ORDER BY datetime(created_at) ASC`
-    )
-    .all() as AdminUserRow[];
+async function ensureDefaultAdminUser(): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const { count, error } = await supabase
+    .from("admin_users")
+    .select("*", { count: "exact", head: true });
 
-  return rows.map((row) => toAdminUserPublic(mapRow(row)));
+  if (error) throw error;
+  if ((count ?? 0) > 0) return;
+
+  const { error: insertError } = await supabase.from("admin_users").insert({
+    id: randomUUID(),
+    username: "admin",
+    password_hash: hashAdminPassword(getAdminDefaultPassword()),
+    display_name: "최고 관리자",
+    role: "super_admin",
+    is_active: true,
+  });
+
+  if (insertError) throw insertError;
 }
 
-export function getAdminUserById(id: string): AdminUserRecord | null {
-  const db = getAppDb();
-  const row = db
-    .prepare(
-      `SELECT id, username, password_hash, display_name, role, is_active, created_at, last_login_at
-       FROM admin_users WHERE id = ?`
-    )
-    .get(id) as AdminUserRow | undefined;
+export async function listAdminUsers(): Promise<AdminUserPublic[]> {
+  await ensureDefaultAdminUser();
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("id, username, password_hash, display_name, role, is_active, created_at, last_login_at")
+    .order("created_at", { ascending: true });
 
-  return row ? mapRow(row) : null;
+  if (error) throw error;
+  return (data ?? []).map((row) => toAdminUserPublic(mapRow(row)));
 }
 
-export function getAdminUserByUsername(username: string): AdminUserRecord | null {
-  const db = getAppDb();
+export async function getAdminUserById(id: string): Promise<AdminUserRecord | null> {
+  await ensureDefaultAdminUser();
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("id, username, password_hash, display_name, role, is_active, created_at, last_login_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? mapRow(data) : null;
+}
+
+export async function getAdminUserByUsername(username: string): Promise<AdminUserRecord | null> {
+  await ensureDefaultAdminUser();
+  const supabase = getSupabaseAdmin();
   const normalizedUsername = normalizeAdminUsername(username);
-  const row = db
-    .prepare(
-      `SELECT id, username, password_hash, display_name, role, is_active, created_at, last_login_at
-       FROM admin_users WHERE lower(username) = ?`
-    )
-    .get(normalizedUsername) as AdminUserRow | undefined;
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("id, username, password_hash, display_name, role, is_active, created_at, last_login_at")
+    .eq("username", normalizedUsername)
+    .maybeSingle();
 
-  return row ? mapRow(row) : null;
+  if (error) throw error;
+  return data ? mapRow(data) : null;
 }
 
 export type AdminAuthDiagnostics = {
@@ -94,16 +111,15 @@ export type AdminAuthDiagnostics = {
   passwordHashLength: number | null;
   bcryptCompareResult: boolean | null;
   failureReason: string | null;
-  db: DbPathDiagnostics;
+  database: ReturnType<typeof getSupabaseDiagnostics>;
 };
 
-export function authenticateAdminUserWithDiagnostics(
+export async function authenticateAdminUserWithDiagnostics(
   username: string,
   password: string
-): { user: AdminUserRecord | null; diagnostics: AdminAuthDiagnostics } {
+): Promise<{ user: AdminUserRecord | null; diagnostics: AdminAuthDiagnostics }> {
   const normalizedUsername = normalizeAdminUsername(username);
-  const dbDiagnostics = getDbPathDiagnostics();
-  const user = getAdminUserByUsername(normalizedUsername);
+  const user = await getAdminUserByUsername(normalizedUsername);
 
   const diagnostics: AdminAuthDiagnostics = {
     queriedUsername: normalizedUsername,
@@ -112,7 +128,7 @@ export function authenticateAdminUserWithDiagnostics(
     passwordHashLength: user?.passwordHash.length ?? null,
     bcryptCompareResult: null,
     failureReason: null,
-    db: dbDiagnostics,
+    database: getSupabaseDiagnostics(),
   };
 
   if (!user) {
@@ -133,48 +149,53 @@ export function authenticateAdminUserWithDiagnostics(
     return { user: null, diagnostics };
   }
 
-  const db = getAppDb();
-  db.prepare(`UPDATE admin_users SET last_login_at = datetime('now') WHERE id = ?`).run(user.id);
-  commitAdminUserWrite();
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("admin_users")
+    .update({ last_login_at: new Date().toISOString() })
+    .eq("id", user.id);
 
-  return { user: getAdminUserById(user.id), diagnostics };
+  if (error) throw error;
+
+  return { user: await getAdminUserById(user.id), diagnostics };
 }
 
-export function authenticateAdminUser(username: string, password: string): AdminUserRecord | null {
-  return authenticateAdminUserWithDiagnostics(username, password).user;
+export async function authenticateAdminUser(
+  username: string,
+  password: string
+): Promise<AdminUserRecord | null> {
+  return (await authenticateAdminUserWithDiagnostics(username, password)).user;
 }
 
-export function createAdminUser(input: {
+export async function createAdminUser(input: {
   username: string;
   password: string;
   displayName?: string | null;
   role: AdminRole;
-}): AdminUserPublic {
-  const db = getAppDb();
+}): Promise<AdminUserPublic> {
   const username = normalizeAdminUsername(input.username);
   if (!username) throw new Error("username_required");
-  if (getAdminUserByUsername(username)) throw new Error("username_exists");
+  if (await getAdminUserByUsername(username)) throw new Error("username_exists");
 
   const id = randomUUID();
-  db.prepare(
-    `INSERT INTO admin_users (id, username, password_hash, display_name, role, is_active)
-     VALUES (?, ?, ?, ?, ?, 1)`
-  ).run(
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.from("admin_users").insert({
     id,
     username,
-    hashAdminPassword(input.password),
-    input.displayName?.trim() || null,
-    input.role
-  );
+    password_hash: hashAdminPassword(input.password),
+    display_name: input.displayName?.trim() || null,
+    role: input.role,
+    is_active: true,
+  });
 
-  commitAdminUserWrite();
+  if (error) throw error;
 
-  const created = getAdminUserById(id);
+  const created = await getAdminUserById(id);
   if (!created) throw new Error("create_failed");
   return toAdminUserPublic(created);
 }
 
-export function updateAdminUser(
+export async function updateAdminUser(
   id: string,
   input: {
     username?: string;
@@ -183,16 +204,15 @@ export function updateAdminUser(
     role?: AdminRole;
     isActive?: boolean;
   }
-): AdminUserPublic {
-  const db = getAppDb();
-  const existing = getAdminUserById(id);
+): Promise<AdminUserPublic> {
+  const existing = await getAdminUserById(id);
   if (!existing) throw new Error("not_found");
 
   const username =
     input.username !== undefined ? normalizeAdminUsername(input.username) : existing.username;
   if (!username) throw new Error("username_required");
 
-  const duplicate = getAdminUserByUsername(username);
+  const duplicate = await getAdminUserByUsername(username);
   if (duplicate && duplicate.id !== id) throw new Error("username_exists");
 
   const passwordHash =
@@ -206,55 +226,64 @@ export function updateAdminUser(
   const role = input.role ?? existing.role;
   const isActive = input.isActive ?? existing.isActive;
 
-  db.prepare(
-    `UPDATE admin_users
-     SET username = ?, password_hash = ?, display_name = ?, role = ?, is_active = ?
-     WHERE id = ?`
-  ).run(username, passwordHash, displayName, role, isActive ? 1 : 0, id);
-  commitAdminUserWrite();
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("admin_users")
+    .update({
+      username,
+      password_hash: passwordHash,
+      display_name: displayName,
+      role,
+      is_active: isActive,
+    })
+    .eq("id", id);
 
-  const updated = getAdminUserById(id);
+  if (error) throw error;
+
+  const updated = await getAdminUserById(id);
   if (!updated) throw new Error("update_failed");
   return toAdminUserPublic(updated);
 }
 
-export function changeAdminPassword(
+export async function changeAdminPassword(
   id: string,
   currentPassword: string,
   newPassword: string
-): void {
-  const user = getAdminUserById(id);
+): Promise<void> {
+  const user = await getAdminUserById(id);
   if (!user) throw new Error("not_found");
   if (!verifyAdminPassword(currentPassword, user.passwordHash)) throw new Error("invalid_password");
 
-  const db = getAppDb();
-  db.prepare(`UPDATE admin_users SET password_hash = ? WHERE id = ?`).run(
-    hashAdminPassword(newPassword),
-    id
-  );
-  commitAdminUserWrite();
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("admin_users")
+    .update({ password_hash: hashAdminPassword(newPassword) })
+    .eq("id", id);
+
+  if (error) throw error;
 }
 
-export function deleteAdminUser(id: string): void {
-  const db = getAppDb();
-  const result = db.prepare(`DELETE FROM admin_users WHERE id = ?`).run(id);
-  if (result.changes === 0) throw new Error("not_found");
-  commitAdminUserWrite();
+export async function deleteAdminUser(id: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.from("admin_users").delete().eq("id", id).select("id");
+
+  if (error) throw error;
+  if (!data?.length) throw new Error("not_found");
 }
 
-export function countSuperAdmins(excludeId?: string): number {
-  const db = getAppDb();
+export async function countSuperAdmins(excludeId?: string): Promise<number> {
+  const supabase = getSupabaseAdmin();
+  let query = supabase
+    .from("admin_users")
+    .select("*", { count: "exact", head: true })
+    .eq("role", "super_admin")
+    .eq("is_active", true);
+
   if (excludeId) {
-    const row = db
-      .prepare(
-        `SELECT COUNT(*) AS count FROM admin_users WHERE role = 'super_admin' AND is_active = 1 AND id != ?`
-      )
-      .get(excludeId) as { count: number };
-    return row.count;
+    query = query.neq("id", excludeId);
   }
 
-  const row = db
-    .prepare(`SELECT COUNT(*) AS count FROM admin_users WHERE role = 'super_admin' AND is_active = 1`)
-    .get() as { count: number };
-  return row.count;
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
 }

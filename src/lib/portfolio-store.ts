@@ -5,6 +5,7 @@ import {
   type PortfolioItemInput,
 } from "@/components/Portfolio/portfolio-data";
 import { fetchCollection, saveCollection } from "@/lib/api/data-client";
+import { parseApiError } from "@/lib/api/parse-api-error";
 import { getAdminToken } from "@/lib/admin-auth";
 
 export const PORTFOLIO_STORAGE_KEY = "artdear-portfolio-items";
@@ -22,12 +23,7 @@ function notifyPortfolioUpdated() {
 }
 
 async function parseError(response: Response): Promise<string> {
-  try {
-    const data = (await response.json()) as { error?: string };
-    return data.error ?? "request_failed";
-  } catch {
-    return "request_failed";
-  }
+  return parseApiError(response);
 }
 
 export async function getPortfolioItems(): Promise<PortfolioItem[]> {

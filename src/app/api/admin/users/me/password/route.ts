@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const session = getAuthorizedAdminSession(request);
+  const session = await getAuthorizedAdminSession(request);
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "password_mismatch" }, { status: 400 });
     }
 
-    changeAdminPassword(session.id, currentPassword, newPassword);
+    await changeAdminPassword(session.id, currentPassword, newPassword);
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof Error && error.message === "invalid_password") {

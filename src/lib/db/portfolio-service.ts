@@ -7,13 +7,14 @@ import {
 import { normalizePortfolioTags } from "@/lib/portfolio-tags";
 import { readCollection, writeCollection } from "./collection-service";
 
-export function getPortfolioItemsFromDb(): PortfolioItem[] {
-  return readCollection<PortfolioItem[]>("portfolio").map(normalizePortfolioItem);
+export async function getPortfolioItemsFromDb(): Promise<PortfolioItem[]> {
+  const items = await readCollection<PortfolioItem[]>("portfolio");
+  return items.map(normalizePortfolioItem);
 }
 
-export function savePortfolioItemsToDb(items: PortfolioItem[]): PortfolioItem[] {
+export async function savePortfolioItemsToDb(items: PortfolioItem[]): Promise<PortfolioItem[]> {
   const normalized = items.map(normalizePortfolioItem);
-  writeCollection("portfolio", normalized);
+  await writeCollection("portfolio", normalized);
   return normalized;
 }
 
@@ -33,8 +34,8 @@ function mergePortfolioItem(
   });
 }
 
-export function createPortfolioItemInDb(input: PortfolioItemInput): PortfolioItem {
-  const items = getPortfolioItemsFromDb();
+export async function createPortfolioItemInDb(input: PortfolioItemInput): Promise<PortfolioItem> {
+  const items = await getPortfolioItemsFromDb();
   const item = normalizePortfolioItem({
     id: input.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title: input.title,
@@ -50,15 +51,15 @@ export function createPortfolioItemInDb(input: PortfolioItemInput): PortfolioIte
     delete item.image;
   }
 
-  savePortfolioItemsToDb([item, ...items]);
+  await savePortfolioItemsToDb([item, ...items]);
   return item;
 }
 
-export function updatePortfolioItemInDb(
+export async function updatePortfolioItemInDb(
   id: string,
   input: PortfolioItemInput
-): PortfolioItem | null {
-  const items = getPortfolioItemsFromDb();
+): Promise<PortfolioItem | null> {
+  const items = await getPortfolioItemsFromDb();
   const index = items.findIndex((item) => item.id === id);
   if (index === -1) return null;
 
@@ -69,20 +70,23 @@ export function updatePortfolioItemInDb(
 
   const next = [...items];
   next[index] = updated;
-  savePortfolioItemsToDb(next);
+  await savePortfolioItemsToDb(next);
   return updated;
 }
 
-export function deletePortfolioItemInDb(id: string): boolean {
-  const items = getPortfolioItemsFromDb();
+export async function deletePortfolioItemInDb(id: string): Promise<boolean> {
+  const items = await getPortfolioItemsFromDb();
   const next = items.filter((item) => item.id !== id);
   if (next.length === items.length) return false;
-  savePortfolioItemsToDb(next);
+  await savePortfolioItemsToDb(next);
   return true;
 }
 
-export function reorderPortfolioItemInDb(id: string, direction: "up" | "down"): boolean {
-  const items = getPortfolioItemsFromDb();
+export async function reorderPortfolioItemInDb(
+  id: string,
+  direction: "up" | "down"
+): Promise<boolean> {
+  const items = await getPortfolioItemsFromDb();
   const index = items.findIndex((item) => item.id === id);
   if (index === -1) return false;
 
@@ -91,6 +95,6 @@ export function reorderPortfolioItemInDb(id: string, direction: "up" | "down"): 
 
   const next = [...items];
   [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-  savePortfolioItemsToDb(next);
+  await savePortfolioItemsToDb(next);
   return true;
 }

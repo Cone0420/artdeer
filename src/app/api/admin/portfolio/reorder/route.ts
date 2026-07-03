@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/api/route-error";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { reorderPortfolioItemInDb } from "@/lib/db/portfolio-service";
 
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -19,13 +20,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     }
 
-    const ok = reorderPortfolioItemInDb(id, direction);
+    const ok = await reorderPortfolioItemInDb(id, direction);
     if (!ok) {
       return NextResponse.json({ error: "reorder_failed" }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "reorder_failed" }, { status: 500 });
+  } catch (error) {
+    return apiErrorResponse("api/admin/portfolio/reorder POST", error, "reorder_failed");
   }
 }

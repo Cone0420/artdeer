@@ -1,7 +1,9 @@
-import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import { getAppDb, getUploadsDir } from "./app-db";
+import {
+  getSupabaseAdmin,
+  getSupabaseStorageBucketName,
+} from "@/lib/supabase/server";
 
 export type MediaRecord = {
   id: string;
@@ -23,81 +25,106 @@ export function getMediaIdFromUrl(value: string) {
   return value.replace(/^\/api\/media\//, "");
 }
 
-export function saveMediaFile(buffer: Buffer, mimeType: string, originalName: string): MediaRecord {
-  const db = getAppDb();
+export async function saveMediaFile(
+  buffer: Buffer,
+  mimeType: string,
+  originalName: string
+): Promise<MediaRecord> {
+  const supabase = getSupabaseAdmin();
   const id = randomUUID();
   const ext = path.extname(originalName) || mimeToExt(mimeType);
-  const filename = `${id}${ext}`;
-  const filePath = path.join(getUploadsDir(), filename);
+  const storagePath = `${id}${ext}`;
+  const bucket = getSupabaseStorageBucketName();
 
-  fs.writeFileSync(filePath, buffer);
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(storagePath, buffer, {
+      contentType: mimeType,
+      upsert: false,
+    });
 
-  db.prepare(
-    `
-    INSERT INTO media_files (id, filename, mime_type, size_bytes, created_at)
-    VALUES (?, ?, ?, ?, datetime('now'))
-  `
-  ).run(id, filename, mimeType, buffer.byteLength);
+  if (uploadError) throw uploadError;
 
-  const row = db
-    .prepare(`SELECT id, filename, mime_type, size_bytes, created_at FROM media_files WHERE id = ?`)
-    .get(id) as {
-    id: string;
-    filename: string;
-    mime_type: string;
-    size_bytes: number;
-    created_at: string;
-  };
+  const { data, error } = await supabase
+    .from("media_files")
+    .insert({
+      id,
+      storage_path: storagePath,
+      mime_type: mimeType,
+      size_bytes: buffer.byteLength,
+    })
+    .select("id, storage_path, mime_type, size_bytes, created_at")
+    .single();
+
+  if (error) throw error;
 
   return {
-    id: row.id,
-    filename: row.filename,
-    mimeType: row.mime_type,
-    sizeBytes: row.size_bytes,
-    createdAt: row.created_at,
+    id: data.id,
+    filename: data.storage_path,
+    mimeType: data.mime_type,
+    sizeBytes: data.size_bytes,
+    createdAt: data.created_at,
   };
 }
 
-export function getMediaFilenameFromUrl(value: string | null | undefined): string | null {
+export async function getMediaFilenameFromUrl(
+  value: string | null | undefined
+): Promise<string | null> {
   if (!value || !isMediaUrl(value)) return null;
 
-  const db = getAppDb();
+  const supabase = getSupabaseAdmin();
   const id = getMediaIdFromUrl(value);
-  const row = db
-    .prepare(`SELECT filename FROM media_files WHERE id = ?`)
-    .get(id) as { filename: string } | undefined;
+  const { data, error } = await supabase
+    .from("media_files")
+    .select("storage_path")
+    .eq("id", id)
+    .maybeSingle();
 
-  return row?.filename ?? null;
+  if (error) throw error;
+  return data?.storage_path ?? null;
 }
 
-export function getMediaFile(id: string): { filePath: string; mimeType: string } | null {
-  const db = getAppDb();
-  const row = db
-    .prepare(`SELECT filename, mime_type FROM media_files WHERE id = ?`)
-    .get(id) as { filename: string; mime_type: string } | undefined;
+export async function getMediaFile(
+  id: string
+): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("media_files")
+    .select("storage_path, mime_type")
+    .eq("id", id)
+    .maybeSingle();
 
-  if (!row) return null;
+  if (error) throw error;
+  if (!data) return null;
 
-  const filePath = path.join(getUploadsDir(), row.filename);
-  if (!fs.existsSync(filePath)) return null;
+  const bucket = getSupabaseStorageBucketName();
+  const { data: fileData, error: downloadError } = await supabase.storage
+    .from(bucket)
+    .download(data.storage_path);
 
-  return { filePath, mimeType: row.mime_type };
+  if (downloadError || !fileData) return null;
+
+  const buffer = Buffer.from(await fileData.arrayBuffer());
+  return { buffer, mimeType: data.mime_type };
 }
 
-export function deleteMediaFile(id: string): boolean {
-  const db = getAppDb();
-  const row = db
-    .prepare(`SELECT filename FROM media_files WHERE id = ?`)
-    .get(id) as { filename: string } | undefined;
+export async function deleteMediaFile(id: string): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("media_files")
+    .select("storage_path")
+    .eq("id", id)
+    .maybeSingle();
 
-  if (!row) return false;
+  if (error) throw error;
+  if (!data) return false;
 
-  const filePath = path.join(getUploadsDir(), row.filename);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
+  const bucket = getSupabaseStorageBucketName();
+  await supabase.storage.from(bucket).remove([data.storage_path]);
 
-  db.prepare(`DELETE FROM media_files WHERE id = ?`).run(id);
+  const { error: deleteError } = await supabase.from("media_files").delete().eq("id", id);
+  if (deleteError) throw deleteError;
+
   return true;
 }
 

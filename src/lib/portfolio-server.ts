@@ -4,14 +4,18 @@ import {
 } from "@/components/Portfolio/portfolio-data";
 import { getPortfolioItemsFromDb } from "@/lib/db/portfolio-service";
 
-export function getServerPortfolioItems(): PortfolioItem[] {
+export async function getServerPortfolioItems(): Promise<PortfolioItem[]> {
   return getPortfolioItemsFromDb();
 }
 
-export function getServerPortfolioItemById(id: string): PortfolioItem | undefined {
-  return getServerPortfolioItems().find((item) => item.id === id);
+export async function getServerPortfolioItemById(
+  id: string
+): Promise<PortfolioItem | undefined> {
+  const items = await getServerPortfolioItems();
+  return items.find((item) => item.id === id);
 }
 
-export function getServerPortfolioIds(): string[] {
-  return getServerPortfolioItems().map((item) => item.id);
+export async function getServerPortfolioIds(): Promise<string[]> {
+  const items = await getServerPortfolioItems();
+  return items.map((item) => item.id);
 }

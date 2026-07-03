@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/ui/page-background";
 import { PortfolioDetail } from "@/components/Portfolio/PortfolioDetail";
 import { createPageMetadata } from "@/lib/seo";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
   getServerPortfolioIds,
   getServerPortfolioItemById,
@@ -19,13 +20,15 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export function generateStaticParams() {
-  return getServerPortfolioIds().map((id) => ({ id }));
+export async function generateStaticParams() {
+  if (!isSupabaseConfigured()) return [];
+  const ids = await getServerPortfolioIds();
+  return ids.map((id) => ({ id }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const item = getServerPortfolioItemById(id);
+  const item = await getServerPortfolioItemById(id);
 
   if (!item) {
     return createPageMetadata({
@@ -45,7 +48,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PortfolioDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const item = getServerPortfolioItemById(id);
+  const item = await getServerPortfolioItemById(id);
 
   if (!item) {
     notFound();

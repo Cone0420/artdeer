@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/api/route-error";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { createPortfolioItemInDb } from "@/lib/db/portfolio-service";
 import type { PortfolioItemInput } from "@/components/Portfolio/portfolio-data";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
       tagsInput?: string;
     };
 
-    const item = createPortfolioItemInDb({
+    const item = await createPortfolioItemInDb({
       ...body,
       tags:
         body.tags ??
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ item }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "create_failed" }, { status: 500 });
+  } catch (error) {
+    return apiErrorResponse("api/admin/portfolio POST", error, "create_failed");
   }
 }

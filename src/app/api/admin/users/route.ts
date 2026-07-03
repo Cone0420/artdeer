@@ -7,15 +7,15 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  if (!getAuthorizedAdminSession(request)) {
+  if (!(await getAuthorizedAdminSession(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({ users: listAdminUsers() });
+  return NextResponse.json({ users: await listAdminUsers() });
 }
 
 export async function POST(request: Request) {
-  if (!isSuperAdminRequest(request)) {
+  if (!(await isSuperAdminRequest(request))) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     }
 
     const role: AdminRole = body.role === "super_admin" ? "super_admin" : "admin";
-    const user = createAdminUser({
+    const user = await createAdminUser({
       username,
       password,
       displayName: body.displayName,

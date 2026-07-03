@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       sessionId = randomUUID();
     }
 
-    const recentVisitId = getRecentVisitId(sessionId);
+    const recentVisitId = await getRecentVisitId(sessionId);
     if (recentVisitId) {
       const response = NextResponse.json({
         recorded: false,
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     const userAgent = request.headers.get("user-agent");
-    const visitId = insertVisitor({
+    const visitId = await insertVisitor({
       sessionId,
       ipHash: hashIpAddress(getClientIp(request)),
       userAgent,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/api/route-error";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { readCollection, writeCollection } from "@/lib/db/collection-service";
 import {
@@ -29,11 +30,10 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   try {
-    const data = readCollection(collection);
+    const data = await readCollection(collection);
     return NextResponse.json(data);
   } catch (error) {
-    console.error(`[api/data/${collection}]`, error);
-    return NextResponse.json({ error: "Failed to load data" }, { status: 500 });
+    return apiErrorResponse(`api/data/${collection} GET`, error, "load_failed");
   }
 }
 
@@ -44,16 +44,15 @@ export async function PUT(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (!isAuthorizedAdminRequest(request)) {
+  if (!(await isAuthorizedAdminRequest(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await request.json();
-    writeCollection(collection, body);
+    await writeCollection(collection, body);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error(`[api/data/${collection}]`, error);
-    return NextResponse.json({ error: "Failed to save data" }, { status: 500 });
+    return apiErrorResponse(`api/data/${collection} PUT`, error, "save_failed");
   }
 }

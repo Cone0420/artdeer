@@ -40,9 +40,9 @@ function isReadableFilename(filename: string): boolean {
   return !/^[0-9a-f-]{20,}$/i.test(base);
 }
 
-function resolveImageFilename(imageUrl?: string | null): string | null {
+async function resolveImageFilename(imageUrl?: string | null): Promise<string | null> {
   if (!imageUrl) return null;
-  const filename = getMediaFilenameFromUrl(imageUrl);
+  const filename = await getMediaFilenameFromUrl(imageUrl);
   if (!filename || !isReadableFilename(filename)) return null;
   return filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
 }
@@ -133,13 +133,13 @@ function resolvePurposeLabel(
   return pickRandom(map[category]);
 }
 
-function generateTitle(
+async function generateTitle(
   analysis: PortfolioImageAnalysis,
   category: PortfolioCategory,
   imageUrl: string
-): string {
+): Promise<string> {
   const style = getStyleContextForTitleGeneration();
-  const filename = resolveImageFilename(imageUrl);
+  const filename = await resolveImageFilename(imageUrl);
   const subject = extractSubjectFromFilename(filename);
   const moodLabel = getMoodLabelKo(analysis.mood);
   const color = analysis.colorNames[0] ?? (analysis.isPastel ? "파스텔" : "");
@@ -233,18 +233,18 @@ function trimDescriptionLength(description: string, max = 250): string {
   return compact || normalized.slice(0, max).trim();
 }
 
-export function generatePortfolioAutoContent(
+export async function generatePortfolioAutoContent(
   input: PortfolioAutoGenerateInput
-): PortfolioAutoGenerateResult {
+): Promise<PortfolioAutoGenerateResult> {
   if (!input.imageUrl?.trim()) throw new Error("image_required");
   if (!input.imageAnalysis) throw new Error("analysis_required");
 
   const categoryScores = resolveCategoryScores(input.imageAnalysis);
   const category = categoryScores[0]?.category ?? "기타 디자인";
   const tags = generateTags(input.imageAnalysis, category);
-  const title = generateTitle(input.imageAnalysis, category, input.imageUrl);
+  const title = await generateTitle(input.imageAnalysis, category, input.imageUrl);
 
-  const { description: rawDescription } = generatePortfolioContent({
+  const { description: rawDescription } = await generatePortfolioContent({
     title,
     category,
     tags,

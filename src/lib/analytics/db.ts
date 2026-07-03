@@ -1,1 +1,1 @@
-export { getAppDb as getAnalyticsDb } from "@/lib/db/app-db";
+export { getSupabaseAdmin as getAnalyticsDb } from "@/lib/supabase/server";
