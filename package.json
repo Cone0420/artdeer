@@ -12,6 +12,7 @@
     "sync-review-avatars": "node scripts/sync-review-avatar-manifest.mjs",
     "sync-favicon": "node scripts/sync-favicon.mjs",
     "migrate-to-supabase": "node scripts/migrate-sqlite-to-supabase.mjs",
+    "push-vercel-env": "node scripts/push-vercel-supabase-env.mjs",
     "prebuild": "node scripts/sync-review-avatar-manifest.mjs && node scripts/sync-favicon.mjs && node scripts/prepare-sqlite-for-deploy.mjs"
   },
   "dependencies": {

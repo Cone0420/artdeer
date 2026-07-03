@@ -1,7 +1,7 @@
 import { FAQ_SEED_VERSION } from "@/lib/faq-data";
 import type { FaqItem } from "@/lib/faq-data";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { useSupabaseDatabase } from "./provider";
+import { assertWritableDatabase, useSupabaseDatabase } from "./provider";
 import {
   ensureDbSeededSqlite,
   hasCollectionSqlite,
@@ -121,6 +121,7 @@ export async function writeCollection<T>(key: CollectionKey, data: T): Promise<v
     await writeCollectionSupabase(key, data);
     return;
   }
+  assertWritableDatabase(`writeCollection(${key})`);
   await writeCollectionSqlite(key, data);
 }
 

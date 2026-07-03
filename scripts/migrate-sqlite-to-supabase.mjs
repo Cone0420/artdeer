@@ -215,11 +215,36 @@ async function migrateAnalyticsEvents() {
   console.log(`Migrated analytics_events: ${payload.length}`);
 }
 
+async function ensureStorageBucket(supabase, bucket) {
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.warn(`Could not list storage buckets: ${listError.message}`);
+    return;
+  }
+
+  if (buckets?.some((entry) => entry.name === bucket)) {
+    console.log(`Storage bucket "${bucket}" already exists`);
+    return;
+  }
+
+  const { error } = await supabase.storage.createBucket(bucket, { public: true });
+  if (error) {
+    console.warn(
+      `Could not create storage bucket "${bucket}" automatically: ${error.message}. Create it manually in Supabase Dashboard.`
+    );
+    return;
+  }
+
+  console.log(`Created storage bucket "${bucket}"`);
+}
+
 async function main() {
   console.log("Starting SQLite → Supabase migration");
   console.log(`SQLite: ${dbPath}`);
   console.log(`Supabase: ${supabaseUrl}`);
   console.log(`Storage bucket: ${bucket}`);
+
+  await ensureStorageBucket(supabase, bucket);
 
   await migrateAdminUsers();
   await migrateCollections();

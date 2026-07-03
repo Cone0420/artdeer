@@ -4,7 +4,7 @@ import {
   getSupabaseAdmin,
   getSupabaseStorageBucketName,
 } from "@/lib/supabase/server";
-import { useSupabaseDatabase } from "./provider";
+import { useSupabaseDatabase, assertWritableDatabase } from "./provider";
 import {
   deleteMediaFileSqlite,
   getMediaFileSqlite,
@@ -38,6 +38,7 @@ export async function saveMediaFile(
   originalName: string
 ): Promise<MediaRecord> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("saveMediaFile");
     return saveMediaFileSqlite(buffer, mimeType, originalName);
   }
 
@@ -129,6 +130,7 @@ export async function getMediaFile(
 
 export async function deleteMediaFile(id: string): Promise<boolean> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("deleteMediaFile");
     return deleteMediaFileSqlite(id);
   }
 

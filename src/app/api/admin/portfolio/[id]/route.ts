@@ -3,11 +3,8 @@ import { apiErrorResponse } from "@/lib/api/route-error";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import {
   deletePortfolioItemInDb,
-  getPortfolioItemsFromDb,
   updatePortfolioItemInDb,
 } from "@/lib/db/portfolio-service";
-import { getPortfolioDeleteDiagnostics } from "@/lib/db/vercel-db-sync";
-import { useSupabaseDatabase } from "@/lib/db/provider";
 import type { PortfolioItemInput } from "@/components/Portfolio/portfolio-data";
 import { parsePortfolioTagsInput } from "@/lib/portfolio-tags";
 
@@ -64,31 +61,11 @@ export async function DELETE(request: Request, context: RouteContext) {
   const id = normalizeRouteId(rawId);
 
   try {
-    const diagnostics = !useSupabaseDatabase() ? getPortfolioDeleteDiagnostics(id) : null;
-    const itemsBeforeDelete = await getPortfolioItemsFromDb().catch(() => []);
-    const sqliteIds = itemsBeforeDelete.map((item) => item.id);
-
-    console.info("[portfolio-delete] API DELETE handler", {
-      rawId,
-      id,
-      sqliteIds,
-      diagnostics,
-    });
-
     const deleted = await deletePortfolioItemInDb(id);
     console.info("[portfolio-delete] API delete result", { id, deleted });
 
     if (!deleted) {
-      const payload: Record<string, unknown> = { error: "not_found" };
-      if (diagnostics) {
-        payload.errorMessage = `Portfolio id "${id}" was not found in runtime SQLite after merge.`;
-        payload.debug = {
-          rawRouteId: rawId,
-          sqliteIds,
-          ...diagnostics,
-        };
-      }
-      return NextResponse.json(payload, { status: 404 });
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
 
     return NextResponse.json({ ok: true });

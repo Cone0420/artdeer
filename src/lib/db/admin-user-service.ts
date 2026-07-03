@@ -4,7 +4,7 @@ import type { AdminRole, AdminUserPublic, AdminUserRecord } from "@/lib/admin-us
 import { toAdminUserPublic } from "@/lib/admin-user-types";
 import { getAdminDefaultPassword } from "@/lib/supabase/env";
 import { getSupabaseAdmin, getSupabaseDiagnostics } from "@/lib/supabase/server";
-import { useSupabaseDatabase } from "./provider";
+import { assertWritableDatabase, useSupabaseDatabase } from "./provider";
 import {
   authenticateAdminUserWithDiagnosticsSqlite,
   changeAdminPasswordSqlite,
@@ -204,6 +204,7 @@ export async function createAdminUser(input: {
   role: AdminRole;
 }): Promise<AdminUserPublic> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("createAdminUser");
     return createAdminUserSqlite(input);
   }
 
@@ -240,6 +241,7 @@ export async function updateAdminUser(
   }
 ): Promise<AdminUserPublic> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("updateAdminUser");
     return updateAdminUserSqlite(id, input);
   }
 
@@ -289,6 +291,7 @@ export async function changeAdminPassword(
   newPassword: string
 ): Promise<void> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("changeAdminPassword");
     changeAdminPasswordSqlite(id, currentPassword, newPassword);
     return;
   }
@@ -308,6 +311,7 @@ export async function changeAdminPassword(
 
 export async function deleteAdminUser(id: string): Promise<void> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("deleteAdminUser");
     deleteAdminUserSqlite(id);
     return;
   }

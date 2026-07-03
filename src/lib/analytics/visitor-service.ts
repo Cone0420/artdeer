@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { getAppDb } from "@/lib/db/app-db";
-import { useSupabaseDatabase } from "@/lib/db/provider";
+import { assertWritableDatabase, useSupabaseDatabase } from "@/lib/db/provider";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { VISITOR_DEDUP_MINUTES, MAX_SESSION_DURATION_SECONDS } from "./constants";
 import type {
@@ -57,6 +57,7 @@ export async function hasRecentVisit(sessionId: string): Promise<boolean> {
 
 export async function insertVisitor(input: RecordVisitInput): Promise<number> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("insertVisitor");
     const db = getAppDb();
     const now = new Date().toISOString();
     const result = db
@@ -114,6 +115,7 @@ function normalizeDuration(durationSeconds: number): number {
 
 export async function updateVisitDuration(input: UpdateDurationInput): Promise<boolean> {
   if (!useSupabaseDatabase()) {
+    assertWritableDatabase("updateVisitDuration");
     const db = getAppDb();
     const durationSeconds = normalizeDuration(input.durationSeconds);
     const now = new Date().toISOString();
