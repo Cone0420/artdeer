@@ -28,10 +28,13 @@ for (const key of keys) {
     value = value.slice(value.lastIndexOf(`${key}=`) + key.length + 1);
   }
   const validUrl = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(value);
-  const validJwt = value.startsWith("eyJ") && value.length > 100;
+  const validKey =
+    (value.startsWith("eyJ") && value.length > 100) ||
+    value.startsWith("sb_publishable_") ||
+    value.startsWith("sb_secret_");
   const status =
     key.includes("URL") ? (validUrl ? "valid URL" : "EMPTY or bad URL") :
     key.includes("PASSWORD") ? (value.length > 0 ? "set" : "EMPTY") :
-    validJwt ? "valid JWT" : "EMPTY or bad JWT";
+    validKey ? "valid key" : "EMPTY or bad key";
   console.log(`${key}: ${status}`);
 }

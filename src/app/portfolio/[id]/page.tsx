@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/ui/page-background";
@@ -11,7 +11,7 @@ import {
   getServerPortfolioItemById,
 } from "@/lib/portfolio-server";
 
-const Footer = dynamic(
+const Footer = nextDynamic(
   () => import("@/components/Footer").then((m) => ({ default: m.Footer })),
   { loading: () => null }
 );
@@ -19,6 +19,8 @@ const Footer = dynamic(
 type PageProps = {
   params: Promise<{ id: string }>;
 };
+
+export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   if (!isSupabaseConfigured()) return [];

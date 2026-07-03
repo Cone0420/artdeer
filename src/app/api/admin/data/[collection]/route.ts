@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { readCollection } from "@/lib/db/collection-service";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 const ADMIN_READ_KEYS = ["works"] as const;
 
 type RouteContext = {

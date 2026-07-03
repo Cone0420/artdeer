@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { deleteMediaFile, getMediaFile } from "@/lib/db/media-service";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 type RouteContext = {
   params: Promise<{ id: string }>;
 };

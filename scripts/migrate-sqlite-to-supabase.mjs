@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import { loadProjectEnv } from "./load-env.mjs";
+import { connectSupabasePg, reloadPostgrestSchema } from "./supabase-pg.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -42,8 +43,49 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+function pgColumnValue(column, value) {
+  if (column === "data_json" || column === "metadata") {
+    return JSON.stringify(value);
+  }
+  return value;
+}
+
+async function upsertRowsPg(client, table, rows, conflictColumn) {
+  if (rows.length === 0) return;
+
+  for (const row of rows) {
+    const columns = Object.keys(row);
+    const values = columns.map((_, index) => `$${index + 1}`);
+    const updates = columns
+      .filter((column) => column !== conflictColumn)
+      .map((column) => `${column} = EXCLUDED.${column}`)
+      .join(", ");
+
+    const sql = `
+      INSERT INTO ${table} (${columns.join(", ")})
+      VALUES (${values.join(", ")})
+      ON CONFLICT (${conflictColumn}) DO UPDATE SET ${updates}
+    `;
+
+    await client.query(sql, columns.map((column) => pgColumnValue(column, row[column])));
+  }
+}
+
 async function upsertRows(table, rows, onConflict) {
   if (rows.length === 0) return;
+
+  try {
+    const pgClient = await connectSupabasePg();
+    try {
+      await upsertRowsPg(pgClient, table, rows, onConflict);
+      await reloadPostgrestSchema(pgClient);
+      return;
+    } finally {
+      await pgClient.end();
+    }
+  } catch (error) {
+    console.warn(`[migrate] PostgreSQL upsert failed for ${table}, trying REST:`, error.message);
+  }
 
   for (const batch of chunk(rows, 100)) {
     const { error } = await supabase.from(table).upsert(batch, { onConflict });
@@ -129,7 +171,23 @@ async function migrateMediaFiles() {
     );
 
     if (insertError) {
-      throw new Error(`media_files upsert failed for ${row.id}: ${insertError.message}`);
+      const pgClient = await connectSupabasePg();
+      try {
+        await pgClient.query(
+          `
+          INSERT INTO media_files (id, storage_path, mime_type, size_bytes, created_at)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (id) DO UPDATE SET
+            storage_path = EXCLUDED.storage_path,
+            mime_type = EXCLUDED.mime_type,
+            size_bytes = EXCLUDED.size_bytes,
+            created_at = EXCLUDED.created_at
+        `,
+          [row.id, storagePath, row.mime_type, row.size_bytes, row.created_at]
+        );
+      } finally {
+        await pgClient.end();
+      }
     }
 
     uploaded += 1;

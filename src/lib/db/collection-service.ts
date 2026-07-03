@@ -1,7 +1,8 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { FAQ_SEED_VERSION } from "@/lib/faq-data";
 import type { FaqItem } from "@/lib/faq-data";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { assertWritableDatabase, useSupabaseDatabase } from "./provider";
+import { assertVercelDatabase, useSupabaseDatabase } from "./provider";
 import {
   ensureDbSeededSqlite,
   hasCollectionSqlite,
@@ -110,6 +111,9 @@ export async function ensureDbSeeded(): Promise<void> {
 }
 
 export async function readCollection<T>(key: CollectionKey): Promise<T> {
+  noStore();
+  assertVercelDatabase(`readCollection(${key})`);
+
   if (useSupabaseDatabase()) {
     return readCollectionSupabase<T>(key);
   }
@@ -117,11 +121,13 @@ export async function readCollection<T>(key: CollectionKey): Promise<T> {
 }
 
 export async function writeCollection<T>(key: CollectionKey, data: T): Promise<void> {
+  noStore();
+  assertVercelDatabase(`writeCollection(${key})`);
+
   if (useSupabaseDatabase()) {
     await writeCollectionSupabase(key, data);
     return;
   }
-  assertWritableDatabase(`writeCollection(${key})`);
   await writeCollectionSqlite(key, data);
 }
 

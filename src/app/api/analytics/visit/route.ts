@@ -10,6 +10,9 @@ import {
   insertVisitor,
 } from "@/lib/analytics";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 type VisitPayload = {
   path?: string;
 };

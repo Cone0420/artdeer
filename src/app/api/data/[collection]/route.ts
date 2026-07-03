@@ -8,6 +8,9 @@ import {
   type CollectionKey,
 } from "@/lib/db/constants";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 const ALL_KEYS = new Set<string>([...PUBLIC_COLLECTIONS, ...ADMIN_COLLECTIONS]);
 
 function isCollectionKey(value: string): value is CollectionKey {

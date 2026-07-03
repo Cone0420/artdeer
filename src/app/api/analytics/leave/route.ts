@@ -2,6 +2,9 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { VISITOR_SESSION_COOKIE, updateVisitDuration } from "@/lib/analytics";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 type LeavePayload = {
   visitId?: number;
   durationSeconds?: number;

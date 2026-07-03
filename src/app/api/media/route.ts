@@ -3,6 +3,9 @@ import { apiErrorResponse } from "@/lib/api/route-error";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { saveMediaFile, toMediaUrl } from "@/lib/db/media-service";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 export async function POST(request: Request) {
