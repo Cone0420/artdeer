@@ -446,26 +446,129 @@ function PortfolioFormModal({
   );
 }
 
+function DeleteConfirmModal({
+  item,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  item: PortfolioItem;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="닫기"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={loading ? undefined : onCancel}
+      />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="portfolio-delete-title"
+        className="relative z-10 w-full max-w-[420px] rounded-[22px] bg-artdear-card p-6 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.25)] sm:p-8"
+      >
+        <h2 id="portfolio-delete-title" className="text-[18px] font-bold text-artdear-text">
+          포트폴리오 삭제
+        </h2>
+        <p className="mt-3 text-[14px] leading-relaxed text-artdear-text-subtle">
+          <span className="font-semibold text-artdear-text">"{item.title}"</span> 작품을
+          삭제하시겠습니까?
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onCancel}
+            className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-artdear-border-strong bg-artdear-btn-secondary text-[14px] font-semibold text-artdear-text-muted transition-colors hover:border-artdear-purple hover:text-artdear-purple disabled:opacity-60"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onConfirm}
+            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-red-500 text-[14px] font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+            삭제
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminPortfolioManager() {
   const { items, ready, refresh } = usePortfolioItems();
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<PortfolioItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<PortfolioCategory | "all">("all");
+  const [deleteTarget, setDeleteTarget] = useState<PortfolioItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const filtered = useMemo(() => {
     const searched = filterPortfolioItems(items, searchQuery);
     return searched.filter((item) => activeCategory === "all" || item.category === activeCategory);
   }, [items, activeCategory, searchQuery]);
 
-  const handleDelete = async (item: PortfolioItem) => {
-    if (!confirm(`"${item.title}" 작품을 삭제하시겠습니까?`)) return;
+  const handleDeleteClick = (item: PortfolioItem) => {
+    console.log("[portfolio-delete] delete button clicked", {
+      id: item.id,
+      title: item.title,
+      imageUrl: item.imageUrl ?? null,
+    });
+    setDeleteTarget(item);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+
+    const item = deleteTarget;
+    console.log("[portfolio-delete] handleDelete executed", { id: item.id, title: item.title });
+    setDeleteLoading(true);
+
     try {
-      if (isStoredImageRef(item.imageUrl)) await deleteStoredImage(item.imageUrl);
-      await deletePortfolioItem(item.id);
+      console.log("[portfolio-delete] calling deletePortfolioItem", {
+        id: item.id,
+        url: `/api/admin/portfolio/${item.id}`,
+      });
+
+      const deleted = await deletePortfolioItem(item.id);
+      console.log("[portfolio-delete] deletePortfolioItem response", { id: item.id, deleted });
+
+      if (!deleted) {
+        throw new Error("not_found");
+      }
+
+      if (isStoredImageRef(item.imageUrl)) {
+        console.log("[portfolio-delete] cleaning up stored image", { imageUrl: item.imageUrl });
+        try {
+          await deleteStoredImage(item.imageUrl);
+          console.log("[portfolio-delete] stored image cleanup complete", {
+            imageUrl: item.imageUrl,
+          });
+        } catch (imageError) {
+          console.warn("[portfolio-delete] stored image cleanup failed (portfolio already deleted)", {
+            imageUrl: item.imageUrl,
+            error: imageError,
+          });
+        }
+      }
+
+      console.log("[portfolio-delete] refreshing portfolio list");
       await refresh();
-    } catch {
+      console.log("[portfolio-delete] delete complete", { id: item.id });
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("[portfolio-delete] delete failed", { id: item.id, error });
       alert("삭제에 실패했습니다.");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -604,7 +707,11 @@ export function AdminPortfolioManager() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDelete(item)}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleDeleteClick(item);
+                            }}
                             className="flex size-8 items-center justify-center rounded-[10px] text-red-500 hover:bg-red-50"
                             aria-label="삭제"
                           >
@@ -630,6 +737,19 @@ export function AdminPortfolioManager() {
             setEditing(null);
           }}
           onSaved={refresh}
+        />
+      ) : null}
+
+      {deleteTarget ? (
+        <DeleteConfirmModal
+          item={deleteTarget}
+          loading={deleteLoading}
+          onCancel={() => {
+            if (deleteLoading) return;
+            console.log("[portfolio-delete] delete cancelled", { id: deleteTarget.id });
+            setDeleteTarget(null);
+          }}
+          onConfirm={() => void handleDeleteConfirm()}
         />
       ) : null}
     </div>

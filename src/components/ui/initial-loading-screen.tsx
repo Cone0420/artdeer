@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DeerLogoIcon } from "@/components/icons/brand-icons";
 
@@ -119,10 +120,14 @@ function LoadingScreenOverlay() {
 }
 
 export function InitialLoadingProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [showLoading, setShowLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const isAdminRoute = pathname.startsWith("/admin");
 
   useEffect(() => {
+    if (isAdminRoute) return;
+
     setMounted(true);
 
     try {
@@ -143,13 +148,13 @@ export function InitialLoadingProvider({ children }: { children: React.ReactNode
     }, LOADING_DURATION_MS);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [isAdminRoute]);
 
   return (
     <>
       {children}
       <AnimatePresence mode="wait">
-        {mounted && showLoading ? <LoadingScreenOverlay /> : null}
+        {!isAdminRoute && mounted && showLoading ? <LoadingScreenOverlay /> : null}
       </AnimatePresence>
     </>
   );

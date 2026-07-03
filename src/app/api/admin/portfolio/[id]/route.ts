@@ -43,11 +43,15 @@ export async function PUT(request: Request, context: RouteContext) {
 
 export async function DELETE(request: Request, context: RouteContext) {
   if (!isAuthorizedAdminRequest(request)) {
+    console.warn("[portfolio-delete] API unauthorized");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const { id } = await context.params;
+  console.info("[portfolio-delete] API DELETE handler", { id });
+
   const deleted = deletePortfolioItemInDb(id);
+  console.info("[portfolio-delete] API delete result", { id, deleted });
 
   if (!deleted) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

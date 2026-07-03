@@ -85,9 +85,19 @@ export async function updatePortfolioItem(
 }
 
 export async function deletePortfolioItem(id: string): Promise<boolean> {
-  const response = await fetch(`/api/admin/portfolio/${id}`, {
+  const url = `/api/admin/portfolio/${id}`;
+  console.log("[portfolio-delete] API request starting", { method: "DELETE", url, id });
+
+  const response = await fetch(url, {
     method: "DELETE",
     headers: authHeaders(),
+  });
+
+  console.log("[portfolio-delete] API response received", {
+    id,
+    url,
+    status: response.status,
+    ok: response.ok,
   });
 
   if (response.status === 404) return false;

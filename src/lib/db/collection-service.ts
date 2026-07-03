@@ -1,6 +1,6 @@
 import { FAQ_SEED_VERSION } from "@/lib/faq-data";
 import type { FaqItem } from "@/lib/faq-data";
-import { getAppDb } from "./app-db";
+import { getAppDb, syncAppDbWrites } from "./app-db";
 import {
   ALL_COLLECTION_KEYS,
   defaultMeta,
@@ -75,6 +75,7 @@ export function writeCollection<T>(key: CollectionKey, data: T) {
       updated_at = excluded.updated_at
   `
   ).run(key, JSON.stringify(data));
+  syncAppDbWrites();
 
   if (key === "faq") {
     const meta = readCollection<MetaCollection>("meta");

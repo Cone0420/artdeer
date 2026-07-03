@@ -36,6 +36,9 @@ function syncBundledDbToRuntime(bundledPath: string, runtimePath: string): void 
     return;
   }
 
+  // On warm Vercel instances keep the writable /tmp database so admin writes persist.
+  if (isVercelRuntime()) return;
+
   const bundledStat = fs.statSync(bundledPath);
   const runtimeStat = fs.statSync(runtimePath);
 
