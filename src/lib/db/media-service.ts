@@ -4,6 +4,13 @@ import {
   getSupabaseAdmin,
   getSupabaseStorageBucketName,
 } from "@/lib/supabase/server";
+import { useSupabaseDatabase } from "./provider";
+import {
+  deleteMediaFileSqlite,
+  getMediaFileSqlite,
+  getMediaFilenameFromUrlSqlite,
+  saveMediaFileSqlite,
+} from "./sqlite/media-service";
 
 export type MediaRecord = {
   id: string;
@@ -30,6 +37,10 @@ export async function saveMediaFile(
   mimeType: string,
   originalName: string
 ): Promise<MediaRecord> {
+  if (!useSupabaseDatabase()) {
+    return saveMediaFileSqlite(buffer, mimeType, originalName);
+  }
+
   const supabase = getSupabaseAdmin();
   const id = randomUUID();
   const ext = path.extname(originalName) || mimeToExt(mimeType);
@@ -70,6 +81,10 @@ export async function saveMediaFile(
 export async function getMediaFilenameFromUrl(
   value: string | null | undefined
 ): Promise<string | null> {
+  if (!useSupabaseDatabase()) {
+    return getMediaFilenameFromUrlSqlite(value);
+  }
+
   if (!value || !isMediaUrl(value)) return null;
 
   const supabase = getSupabaseAdmin();
@@ -87,6 +102,10 @@ export async function getMediaFilenameFromUrl(
 export async function getMediaFile(
   id: string
 ): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  if (!useSupabaseDatabase()) {
+    return getMediaFileSqlite(id);
+  }
+
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("media_files")
@@ -109,6 +128,10 @@ export async function getMediaFile(
 }
 
 export async function deleteMediaFile(id: string): Promise<boolean> {
+  if (!useSupabaseDatabase()) {
+    return deleteMediaFileSqlite(id);
+  }
+
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("media_files")

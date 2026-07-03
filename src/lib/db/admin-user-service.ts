@@ -4,6 +4,18 @@ import type { AdminRole, AdminUserPublic, AdminUserRecord } from "@/lib/admin-us
 import { toAdminUserPublic } from "@/lib/admin-user-types";
 import { getAdminDefaultPassword } from "@/lib/supabase/env";
 import { getSupabaseAdmin, getSupabaseDiagnostics } from "@/lib/supabase/server";
+import { useSupabaseDatabase } from "./provider";
+import {
+  authenticateAdminUserWithDiagnosticsSqlite,
+  changeAdminPasswordSqlite,
+  countSuperAdminsSqlite,
+  createAdminUserSqlite,
+  deleteAdminUserSqlite,
+  getAdminUserByIdSqlite,
+  getAdminUserByUsernameSqlite,
+  listAdminUsersSqlite,
+  updateAdminUserSqlite,
+} from "./sqlite/admin-user-service";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -44,7 +56,7 @@ export function verifyAdminPassword(password: string, passwordHash: string): boo
   return compareSync(password, passwordHash);
 }
 
-async function ensureDefaultAdminUser(): Promise<void> {
+async function ensureDefaultAdminUserSupabase(): Promise<void> {
   const supabase = getSupabaseAdmin();
   const { count, error } = await supabase
     .from("admin_users")
@@ -65,8 +77,24 @@ async function ensureDefaultAdminUser(): Promise<void> {
   if (insertError) throw insertError;
 }
 
+export type AdminAuthDiagnostics = {
+  queriedUsername: string;
+  userFound: boolean;
+  isActive: boolean | null;
+  passwordHashLength: number | null;
+  bcryptCompareResult: boolean | null;
+  failureReason: string | null;
+  database: ReturnType<typeof getSupabaseDiagnostics> | ReturnType<
+    typeof import("./db-path").getDbPathDiagnostics
+  >;
+};
+
 export async function listAdminUsers(): Promise<AdminUserPublic[]> {
-  await ensureDefaultAdminUser();
+  if (!useSupabaseDatabase()) {
+    return listAdminUsersSqlite();
+  }
+
+  await ensureDefaultAdminUserSupabase();
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("admin_users")
@@ -78,7 +106,11 @@ export async function listAdminUsers(): Promise<AdminUserPublic[]> {
 }
 
 export async function getAdminUserById(id: string): Promise<AdminUserRecord | null> {
-  await ensureDefaultAdminUser();
+  if (!useSupabaseDatabase()) {
+    return getAdminUserByIdSqlite(id);
+  }
+
+  await ensureDefaultAdminUserSupabase();
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("admin_users")
@@ -91,7 +123,11 @@ export async function getAdminUserById(id: string): Promise<AdminUserRecord | nu
 }
 
 export async function getAdminUserByUsername(username: string): Promise<AdminUserRecord | null> {
-  await ensureDefaultAdminUser();
+  if (!useSupabaseDatabase()) {
+    return getAdminUserByUsernameSqlite(username);
+  }
+
+  await ensureDefaultAdminUserSupabase();
   const supabase = getSupabaseAdmin();
   const normalizedUsername = normalizeAdminUsername(username);
   const { data, error } = await supabase
@@ -104,20 +140,14 @@ export async function getAdminUserByUsername(username: string): Promise<AdminUse
   return data ? mapRow(data) : null;
 }
 
-export type AdminAuthDiagnostics = {
-  queriedUsername: string;
-  userFound: boolean;
-  isActive: boolean | null;
-  passwordHashLength: number | null;
-  bcryptCompareResult: boolean | null;
-  failureReason: string | null;
-  database: ReturnType<typeof getSupabaseDiagnostics>;
-};
-
 export async function authenticateAdminUserWithDiagnostics(
   username: string,
   password: string
 ): Promise<{ user: AdminUserRecord | null; diagnostics: AdminAuthDiagnostics }> {
+  if (!useSupabaseDatabase()) {
+    return authenticateAdminUserWithDiagnosticsSqlite(username, password);
+  }
+
   const normalizedUsername = normalizeAdminUsername(username);
   const user = await getAdminUserByUsername(normalizedUsername);
 
@@ -173,6 +203,10 @@ export async function createAdminUser(input: {
   displayName?: string | null;
   role: AdminRole;
 }): Promise<AdminUserPublic> {
+  if (!useSupabaseDatabase()) {
+    return createAdminUserSqlite(input);
+  }
+
   const username = normalizeAdminUsername(input.username);
   if (!username) throw new Error("username_required");
   if (await getAdminUserByUsername(username)) throw new Error("username_exists");
@@ -205,6 +239,10 @@ export async function updateAdminUser(
     isActive?: boolean;
   }
 ): Promise<AdminUserPublic> {
+  if (!useSupabaseDatabase()) {
+    return updateAdminUserSqlite(id, input);
+  }
+
   const existing = await getAdminUserById(id);
   if (!existing) throw new Error("not_found");
 
@@ -250,6 +288,11 @@ export async function changeAdminPassword(
   currentPassword: string,
   newPassword: string
 ): Promise<void> {
+  if (!useSupabaseDatabase()) {
+    changeAdminPasswordSqlite(id, currentPassword, newPassword);
+    return;
+  }
+
   const user = await getAdminUserById(id);
   if (!user) throw new Error("not_found");
   if (!verifyAdminPassword(currentPassword, user.passwordHash)) throw new Error("invalid_password");
@@ -264,6 +307,11 @@ export async function changeAdminPassword(
 }
 
 export async function deleteAdminUser(id: string): Promise<void> {
+  if (!useSupabaseDatabase()) {
+    deleteAdminUserSqlite(id);
+    return;
+  }
+
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase.from("admin_users").delete().eq("id", id).select("id");
 
@@ -272,6 +320,10 @@ export async function deleteAdminUser(id: string): Promise<void> {
 }
 
 export async function countSuperAdmins(excludeId?: string): Promise<number> {
+  if (!useSupabaseDatabase()) {
+    return countSuperAdminsSqlite(excludeId);
+  }
+
   const supabase = getSupabaseAdmin();
   let query = supabase
     .from("admin_users")

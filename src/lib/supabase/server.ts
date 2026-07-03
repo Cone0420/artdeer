@@ -3,6 +3,7 @@ import {
   getSupabaseServiceRoleKey,
   getSupabaseStorageBucket,
   getSupabaseUrl,
+  isSupabaseConfigured,
 } from "./env";
 
 export type Database = {
@@ -178,8 +179,8 @@ export function getSupabaseStorageBucketName(): string {
 
 export function getSupabaseDiagnostics() {
   return {
-    provider: "supabase" as const,
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? null,
+    provider: isSupabaseConfigured() ? ("supabase" as const) : ("sqlite" as const),
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? null,
     storageBucket: getSupabaseStorageBucket(),
   };
 }

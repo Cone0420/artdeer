@@ -1,4 +1,6 @@
 import { createHash } from "crypto";
+import { getAppDb } from "@/lib/db/app-db";
+import { useSupabaseDatabase } from "@/lib/db/provider";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { VISITOR_DEDUP_MINUTES, MAX_SESSION_DURATION_SECONDS } from "./constants";
 import type {
@@ -19,6 +21,19 @@ export function hashIpAddress(ip: string): string {
 }
 
 export async function getRecentVisitId(sessionId: string): Promise<number | null> {
+  if (!useSupabaseDatabase()) {
+    const db = getAppDb();
+    const cutoff = new Date(Date.now() - VISITOR_DEDUP_MINUTES * 60 * 1000).toISOString();
+    const row = db
+      .prepare(
+        `SELECT id FROM visitors
+         WHERE session_id = ? AND visited_at >= ?
+         ORDER BY id DESC LIMIT 1`
+      )
+      .get(sessionId, cutoff) as { id: number } | undefined;
+    return row?.id ?? null;
+  }
+
   const supabase = getSupabaseAdmin();
   const cutoff = new Date(Date.now() - VISITOR_DEDUP_MINUTES * 60 * 1000).toISOString();
 
@@ -41,6 +56,24 @@ export async function hasRecentVisit(sessionId: string): Promise<boolean> {
 }
 
 export async function insertVisitor(input: RecordVisitInput): Promise<number> {
+  if (!useSupabaseDatabase()) {
+    const db = getAppDb();
+    const now = new Date().toISOString();
+    const result = db
+      .prepare(
+        `INSERT INTO visitors (ip_hash, session_id, user_agent, visited_at, entered_at)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(input.ipHash, input.sessionId, input.userAgent, now, now);
+
+    db.prepare(
+      `INSERT INTO analytics_events (event_type, path, session_id, ip_hash, user_agent, metadata, created_at)
+       VALUES ('homepage_view', ?, ?, ?, ?, NULL, ?)`
+    ).run(input.path ?? "/", input.sessionId, input.ipHash, input.userAgent, now);
+
+    return Number(result.lastInsertRowid);
+  }
+
   const supabase = getSupabaseAdmin();
   const now = new Date().toISOString();
 
@@ -80,6 +113,38 @@ function normalizeDuration(durationSeconds: number): number {
 }
 
 export async function updateVisitDuration(input: UpdateDurationInput): Promise<boolean> {
+  if (!useSupabaseDatabase()) {
+    const db = getAppDb();
+    const durationSeconds = normalizeDuration(input.durationSeconds);
+    const now = new Date().toISOString();
+    const existing = db
+      .prepare(`SELECT duration_seconds FROM visitors WHERE id = ? AND session_id = ?`)
+      .get(input.visitId, input.sessionId) as { duration_seconds: number | null } | undefined;
+
+    if (!existing) return false;
+
+    const nextDuration =
+      existing.duration_seconds == null || durationSeconds > existing.duration_seconds
+        ? durationSeconds
+        : existing.duration_seconds;
+
+    const result = db
+      .prepare(
+        `UPDATE visitors SET left_at = ?, duration_seconds = ?
+         WHERE id = ? AND session_id = ?`
+      )
+      .run(now, nextDuration, input.visitId, input.sessionId);
+
+    if (result.changes === 0) return false;
+
+    db.prepare(
+      `INSERT INTO analytics_events (event_type, path, session_id, metadata, created_at)
+       VALUES ('homepage_leave', '/', ?, ?, ?)`
+    ).run(input.sessionId, JSON.stringify({ visitId: input.visitId, durationSeconds: nextDuration }), now);
+
+    return true;
+  }
+
   const supabase = getSupabaseAdmin();
   const durationSeconds = normalizeDuration(input.durationSeconds);
   const now = new Date().toISOString();
@@ -128,6 +193,27 @@ export async function updateVisitDuration(input: UpdateDurationInput): Promise<b
 }
 
 async function getAverageDuration(sinceIso?: string): Promise<number> {
+  if (!useSupabaseDatabase()) {
+    const db = getAppDb();
+    const rows = sinceIso
+      ? (db
+          .prepare(
+            `SELECT duration_seconds FROM visitors
+             WHERE duration_seconds IS NOT NULL AND duration_seconds > 0 AND entered_at >= ?`
+          )
+          .all(sinceIso) as { duration_seconds: number }[])
+      : (db
+          .prepare(
+            `SELECT duration_seconds FROM visitors
+             WHERE duration_seconds IS NOT NULL AND duration_seconds > 0`
+          )
+          .all() as { duration_seconds: number }[]);
+
+    if (!rows.length) return 0;
+    const total = rows.reduce((sum, row) => sum + row.duration_seconds, 0);
+    return Math.round(total / rows.length);
+  }
+
   const supabase = getSupabaseAdmin();
   let query = supabase
     .from("visitors")
@@ -172,6 +258,16 @@ export async function getDurationStats(): Promise<DurationStats> {
 }
 
 async function countVisitorsSince(sinceIso?: string): Promise<number> {
+  if (!useSupabaseDatabase()) {
+    const db = getAppDb();
+    const row = sinceIso
+      ? (db
+          .prepare(`SELECT COUNT(*) AS count FROM visitors WHERE entered_at >= ?`)
+          .get(sinceIso) as { count: number })
+      : (db.prepare(`SELECT COUNT(*) AS count FROM visitors`).get() as { count: number });
+    return row.count;
+  }
+
   const supabase = getSupabaseAdmin();
   let query = supabase.from("visitors").select("*", { count: "exact", head: true });
 

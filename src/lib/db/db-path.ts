@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import Database from "better-sqlite3";
 import { APP_DB_DIR, APP_DB_FILE } from "./constants";
 import { getProjectRoot, resolveProjectPath } from "./project-root";
 
@@ -36,8 +37,32 @@ function syncBundledDbToRuntime(bundledPath: string, runtimePath: string): void 
     return;
   }
 
-  // On warm Vercel instances keep the writable /tmp database so admin writes persist.
-  if (isVercelRuntime()) return;
+  if (isVercelRuntime()) {
+    try {
+      const bundledDb = new Database(bundledPath, { readonly: true, fileMustExist: true });
+      const runtimeDb = new Database(runtimePath, { readonly: true, fileMustExist: true });
+
+      const bundledPortfolio = bundledDb
+        .prepare(`SELECT data_json FROM data_collections WHERE collection_key = 'portfolio'`)
+        .get() as { data_json: string } | undefined;
+      const runtimePortfolio = runtimeDb
+        .prepare(`SELECT data_json FROM data_collections WHERE collection_key = 'portfolio'`)
+        .get() as { data_json: string } | undefined;
+
+      bundledDb.close();
+      runtimeDb.close();
+
+      const bundledCount = bundledPortfolio ? JSON.parse(bundledPortfolio.data_json).length : 0;
+      const runtimeCount = runtimePortfolio ? JSON.parse(runtimePortfolio.data_json).length : 0;
+
+      if (runtimeCount === 0 && bundledCount > 0) {
+        fs.copyFileSync(bundledPath, runtimePath);
+      }
+    } catch {
+      fs.copyFileSync(bundledPath, runtimePath);
+    }
+    return;
+  }
 
   const bundledStat = fs.statSync(bundledPath);
   const runtimeStat = fs.statSync(runtimePath);

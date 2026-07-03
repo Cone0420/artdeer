@@ -1,6 +1,13 @@
 import { FAQ_SEED_VERSION } from "@/lib/faq-data";
 import type { FaqItem } from "@/lib/faq-data";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { useSupabaseDatabase } from "./provider";
+import {
+  ensureDbSeededSqlite,
+  hasCollectionSqlite,
+  readCollectionSqlite,
+  writeCollectionSqlite,
+} from "./sqlite/collection-service";
 import {
   ALL_COLLECTION_KEYS,
   defaultMeta,
@@ -9,7 +16,7 @@ import {
 } from "./seed-data";
 import type { CollectionKey } from "./constants";
 
-async function collectionExists(key: CollectionKey): Promise<boolean> {
+async function collectionExistsSupabase(key: CollectionKey): Promise<boolean> {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("data_collections")
@@ -21,7 +28,7 @@ async function collectionExists(key: CollectionKey): Promise<boolean> {
   return Boolean(data);
 }
 
-export async function ensureDbSeeded(): Promise<void> {
+async function ensureDbSeededSupabase(): Promise<void> {
   const supabase = getSupabaseAdmin();
   const { count, error } = await supabase
     .from("data_collections")
@@ -39,16 +46,16 @@ export async function ensureDbSeeded(): Promise<void> {
   if (insertError) throw insertError;
 }
 
-export async function readCollection<T>(key: CollectionKey): Promise<T> {
-  await ensureDbSeeded();
+async function readCollectionSupabase<T>(key: CollectionKey): Promise<T> {
+  await ensureDbSeededSupabase();
   const supabase = getSupabaseAdmin();
 
   if (key === "faq") {
-    const meta = await readCollection<MetaCollection>("meta");
+    const meta = await readCollectionSupabase<MetaCollection>("meta");
     if (meta.faqSeedVersion !== FAQ_SEED_VERSION) {
       const seeded = getDefaultCollectionData("faq") as FaqItem[];
-      await writeCollection("faq", seeded);
-      await writeCollection("meta", { ...meta, faqSeedVersion: FAQ_SEED_VERSION });
+      await writeCollectionSupabase("faq", seeded);
+      await writeCollectionSupabase("meta", { ...meta, faqSeedVersion: FAQ_SEED_VERSION });
       return seeded as T;
     }
   }
@@ -63,17 +70,16 @@ export async function readCollection<T>(key: CollectionKey): Promise<T> {
 
   if (!data) {
     const fallback = getDefaultCollectionData(key);
-    await writeCollection(key, fallback);
+    await writeCollectionSupabase(key, fallback);
     return fallback as T;
   }
 
   return data.data_json as T;
 }
 
-export async function writeCollection<T>(key: CollectionKey, data: T): Promise<void> {
-  await ensureDbSeeded();
+async function writeCollectionSupabase<T>(key: CollectionKey, data: T): Promise<void> {
+  await ensureDbSeededSupabase();
   const supabase = getSupabaseAdmin();
-
   const payload = JSON.parse(JSON.stringify(data));
 
   const { error } = await supabase.from("data_collections").upsert(
@@ -90,12 +96,38 @@ export async function writeCollection<T>(key: CollectionKey, data: T): Promise<v
   }
 
   if (key === "faq") {
-    const meta = await readCollection<MetaCollection>("meta");
-    await writeCollection("meta", { ...defaultMeta, ...meta, faqSeedVersion: FAQ_SEED_VERSION });
+    const meta = await readCollectionSupabase<MetaCollection>("meta");
+    await writeCollectionSupabase("meta", { ...defaultMeta, ...meta, faqSeedVersion: FAQ_SEED_VERSION });
   }
 }
 
+export async function ensureDbSeeded(): Promise<void> {
+  if (useSupabaseDatabase()) {
+    await ensureDbSeededSupabase();
+    return;
+  }
+  await ensureDbSeededSqlite();
+}
+
+export async function readCollection<T>(key: CollectionKey): Promise<T> {
+  if (useSupabaseDatabase()) {
+    return readCollectionSupabase<T>(key);
+  }
+  return readCollectionSqlite<T>(key);
+}
+
+export async function writeCollection<T>(key: CollectionKey, data: T): Promise<void> {
+  if (useSupabaseDatabase()) {
+    await writeCollectionSupabase(key, data);
+    return;
+  }
+  await writeCollectionSqlite(key, data);
+}
+
 export async function hasCollection(key: CollectionKey): Promise<boolean> {
-  await ensureDbSeeded();
-  return collectionExists(key);
+  if (useSupabaseDatabase()) {
+    await ensureDbSeededSupabase();
+    return collectionExistsSupabase(key);
+  }
+  return hasCollectionSqlite(key);
 }
