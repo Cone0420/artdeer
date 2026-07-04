@@ -17,6 +17,10 @@ import {
 } from "./seed-data";
 import type { CollectionKey } from "./constants";
 
+const globalForCollections = globalThis as typeof globalThis & {
+  __artdearSupabaseSeeded?: boolean;
+};
+
 async function collectionExistsSupabase(key: CollectionKey): Promise<boolean> {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
@@ -30,13 +34,18 @@ async function collectionExistsSupabase(key: CollectionKey): Promise<boolean> {
 }
 
 async function ensureDbSeededSupabase(): Promise<void> {
+  if (globalForCollections.__artdearSupabaseSeeded) return;
+
   const supabase = getSupabaseAdmin();
   const { count, error } = await supabase
     .from("data_collections")
     .select("*", { count: "exact", head: true });
 
   if (error) throw error;
-  if ((count ?? 0) > 0) return;
+  if ((count ?? 0) > 0) {
+    globalForCollections.__artdearSupabaseSeeded = true;
+    return;
+  }
 
   const rows = ALL_COLLECTION_KEYS.map((key) => ({
     collection_key: key,
@@ -45,6 +54,7 @@ async function ensureDbSeededSupabase(): Promise<void> {
 
   const { error: insertError } = await supabase.from("data_collections").insert(rows);
   if (insertError) throw insertError;
+  globalForCollections.__artdearSupabaseSeeded = true;
 }
 
 async function readCollectionSupabase<T>(key: CollectionKey): Promise<T> {

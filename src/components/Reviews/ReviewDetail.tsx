@@ -50,12 +50,22 @@ function NavReviewCard({
   );
 }
 
-export function ReviewDetail({ id }: { id: string }) {
+export function ReviewDetail({
+  id,
+  initialItem,
+}: {
+  id: string;
+  initialItem?: ReviewItem;
+}) {
   const { items, ready } = useReviews();
 
-  const { item, prev: prevItem, next: nextItem } = useMemo(
-    () => getReviewNeighbors(items, id),
-    [items, id]
+  const item = useMemo(() => {
+    return items.find((candidate) => candidate.id === id) ?? initialItem ?? null;
+  }, [items, id, initialItem]);
+
+  const { prev: prevItem, next: nextItem } = useMemo(
+    () => getReviewNeighbors(items.length > 0 ? items : initialItem ? [initialItem] : [], id),
+    [items, id, initialItem]
   );
 
   if (ready && !item) {

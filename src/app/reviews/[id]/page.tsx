@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/ui/page-background";
 import { ReviewDetail } from "@/components/Reviews/ReviewDetail";
 import { createPageMetadata } from "@/lib/seo";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { getServerReviewById, getServerReviewIds } from "@/lib/reviews-server";
+import { getServerReviewById } from "@/lib/reviews-server";
 import { maskReviewNickname } from "@/lib/reviews-data";
 
-const Footer = dynamic(
+const Footer = nextDynamic(
   () => import("@/components/Footer").then((m) => ({ default: m.Footer })),
   { loading: () => null }
 );
@@ -18,11 +17,7 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export async function generateStaticParams() {
-  if (!isSupabaseConfigured()) return [];
-  const ids = await getServerReviewIds();
-  return ids.map((id) => ({ id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
@@ -58,7 +53,7 @@ export default async function ReviewDetailPage({ params }: PageProps) {
       <div className="relative z-10">
         <Header />
         <main id="main-content">
-          <ReviewDetail id={id} />
+          <ReviewDetail id={id} initialItem={item} />
         </main>
         <Footer />
       </div>

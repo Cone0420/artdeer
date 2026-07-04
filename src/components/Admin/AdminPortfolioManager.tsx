@@ -503,7 +503,7 @@ function DeleteConfirmModal({
 }
 
 export function AdminPortfolioManager() {
-  const { items, ready, refresh } = usePortfolioItems();
+  const { items, ready, refresh, setItems } = usePortfolioItems();
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<PortfolioItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -542,8 +542,11 @@ export function AdminPortfolioManager() {
       console.log("[portfolio-delete] deletePortfolioItem response", { id: item.id, deleted });
 
       if (!deleted) {
-        throw new Error("not_found");
+        throw new Error("삭제할 작품을 찾을 수 없습니다. 목록을 새로고침한 뒤 다시 시도해주세요.");
       }
+
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      setDeleteTarget(null);
 
       if (isStoredImageRef(item.imageUrl)) {
         console.log("[portfolio-delete] cleaning up stored image", { imageUrl: item.imageUrl });
@@ -560,10 +563,7 @@ export function AdminPortfolioManager() {
         }
       }
 
-      console.log("[portfolio-delete] refreshing portfolio list");
-      await refresh();
-      console.log("[portfolio-delete] delete complete", { id: item.id });
-      setDeleteTarget(null);
+      void refresh();
     } catch (error) {
       console.error("[portfolio-delete] delete failed", { id: item.id, error });
       const message = error instanceof Error ? error.message : "삭제에 실패했습니다.";
@@ -574,10 +574,22 @@ export function AdminPortfolioManager() {
   };
 
   const handleReorder = async (id: string, direction: "up" | "down") => {
+    const index = items.findIndex((entry) => entry.id === id);
+    if (index === -1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const previous = items;
+    const next = [...items];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    setItems(next);
+
     try {
       await reorderPortfolioItem(id, direction);
-      await refresh();
+      void refresh();
     } catch {
+      setItems(previous);
       alert("순서 변경에 실패했습니다.");
     }
   };
@@ -737,7 +749,9 @@ export function AdminPortfolioManager() {
             setModal(null);
             setEditing(null);
           }}
-          onSaved={refresh}
+          onSaved={() => {
+            void refresh();
+          }}
         />
       ) : null}
 

@@ -13,7 +13,13 @@ const UPDATE_EVENTS: Partial<Record<CollectionKey, string>> = {
 };
 
 export async function fetchCollection<T>(collection: CollectionKey): Promise<T> {
-  const response = await fetch(`/api/data/${collection}`, { cache: "no-store" });
+  const response = await fetch(`/api/data/${collection}`, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
   if (!response.ok) {
     throw new Error(`failed_to_load_${collection}`);
   }

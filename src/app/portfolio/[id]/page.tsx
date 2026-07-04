@@ -5,9 +5,7 @@ import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/ui/page-background";
 import { PortfolioDetail } from "@/components/Portfolio/PortfolioDetail";
 import { createPageMetadata } from "@/lib/seo";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
-  getServerPortfolioIds,
   getServerPortfolioItemById,
 } from "@/lib/portfolio-server";
 
@@ -21,12 +19,6 @@ type PageProps = {
 };
 
 export const dynamic = "force-dynamic";
-
-export async function generateStaticParams() {
-  if (!isSupabaseConfigured()) return [];
-  const ids = await getServerPortfolioIds();
-  return ids.map((id) => ({ id }));
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
@@ -62,7 +54,7 @@ export default async function PortfolioDetailPage({ params }: PageProps) {
       <div className="relative z-10">
         <Header />
         <main id="main-content">
-          <PortfolioDetail id={id} />
+          <PortfolioDetail id={id} initialItem={item} />
         </main>
         <Footer />
       </div>

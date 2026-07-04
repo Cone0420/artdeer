@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiErrorResponse } from "@/lib/api/route-error";
+import { noCacheJsonResponse } from "@/lib/api/no-cache-response";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { reorderPortfolioItemInDb } from "@/lib/db/portfolio-service";
 
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "reorder_failed" }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true });
+    return noCacheJsonResponse({ ok: true });
   } catch (error) {
     return apiErrorResponse("api/admin/portfolio/reorder POST", error, "reorder_failed");
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiErrorResponse } from "@/lib/api/route-error";
+import { noCacheJsonResponse } from "@/lib/api/no-cache-response";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import {
   deletePortfolioItemInDb,
@@ -45,7 +46,7 @@ export async function PUT(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
 
-    return NextResponse.json({ item });
+    return noCacheJsonResponse({ item });
   } catch (error) {
     return apiErrorResponse("api/admin/portfolio/[id] PUT", error, "update_failed", 500, { id });
   }
@@ -68,7 +69,7 @@ export async function DELETE(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
 
-    return NextResponse.json({ ok: true });
+    return noCacheJsonResponse({ ok: true });
   } catch (error) {
     return apiErrorResponse("api/admin/portfolio/[id] DELETE", error, "delete_failed", 500, {
       id,

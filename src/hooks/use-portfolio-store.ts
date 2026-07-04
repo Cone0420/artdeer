@@ -34,5 +34,5 @@ export function usePortfolioItems() {
     };
   }, [refresh]);
 
-  return { items, ready, refresh };
+  return { items, ready, refresh, setItems };
 }

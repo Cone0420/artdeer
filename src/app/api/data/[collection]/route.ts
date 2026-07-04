@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiErrorResponse } from "@/lib/api/route-error";
+import { noCacheJsonResponse } from "@/lib/api/no-cache-response";
 import { isAuthorizedAdminRequest } from "@/lib/admin-auth-server";
 import { readCollection, writeCollection } from "@/lib/db/collection-service";
 import {
@@ -34,7 +35,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
   try {
     const data = await readCollection(collection);
-    return NextResponse.json(data);
+    return noCacheJsonResponse(data);
   } catch (error) {
     return apiErrorResponse(`api/data/${collection} GET`, error, "load_failed");
   }
@@ -54,7 +55,7 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const body = await request.json();
     await writeCollection(collection, body);
-    return NextResponse.json({ ok: true });
+    return noCacheJsonResponse({ ok: true });
   } catch (error) {
     return apiErrorResponse(`api/data/${collection} PUT`, error, "save_failed");
   }

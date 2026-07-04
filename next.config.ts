@@ -36,7 +36,16 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/:path((?!admin).*)",
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate, max-age=0",
+          },
+        ],
+      },
+      {
+        source: "/:path((?!admin|api).*)",
         headers: [
           {
             key: "Cache-Control",

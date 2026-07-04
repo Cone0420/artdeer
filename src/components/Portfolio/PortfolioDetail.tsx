@@ -83,16 +83,26 @@ function RecommendCard({ item }: { item: PortfolioItem }) {
   );
 }
 
-export function PortfolioDetail({ id }: { id: string }) {
+export function PortfolioDetail({
+  id,
+  initialItem,
+}: {
+  id: string;
+  initialItem?: PortfolioItem;
+}) {
   const { items, ready } = usePortfolioItems();
   const { settings } = useSettings();
 
   const discordLink = externalHref(settings?.discordLink ?? "#");
   const kakaoLink = externalHref(settings?.kakaoLink ?? "#");
 
-  const { item, prev: prevItem, next: nextItem } = useMemo(
-    () => getPortfolioNeighbors(items, id),
-    [items, id]
+  const item = useMemo(() => {
+    return items.find((candidate) => candidate.id === id) ?? initialItem ?? null;
+  }, [items, id, initialItem]);
+
+  const { prev: prevItem, next: nextItem } = useMemo(
+    () => getPortfolioNeighbors(items.length > 0 ? items : initialItem ? [initialItem] : [], id),
+    [items, id, initialItem]
   );
 
   const recommended = useMemo(() => {
