@@ -61,7 +61,7 @@ export function createRootMetadata(): Metadata {
       ],
       apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
     },
-    manifest: "/site.webmanifest",
+    manifest: "/manifest.webmanifest",
     robots: {
       index: true,
       follow: true,

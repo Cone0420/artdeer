@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const CANONICAL_SITE = "https://www.artdeer.art";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
@@ -15,6 +17,22 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "artdeer.vercel.app" }],
+        destination: `${CANONICAL_SITE}/:path*`,
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "artdeer.art" }],
+        destination: `${CANONICAL_SITE}/:path*`,
+        permanent: true,
+      },
+    ];
   },
   async headers() {
     return [
