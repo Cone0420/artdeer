@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
+import { PublicPageShell } from "@/components/layout/public-page-shell";
 import { PageBackground } from "@/components/ui/page-background";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -24,7 +25,7 @@ export default function ReviewsListPage() {
   return (
     <>
       <PageBackground />
-      <div className="relative z-10">
+      <PublicPageShell>
         <Header />
         <main id="main-content">
           <Suspense fallback={null}>
@@ -32,7 +33,7 @@ export default function ReviewsListPage() {
           </Suspense>
         </main>
         <Footer />
-      </div>
+      </PublicPageShell>
     </>
   );
 }

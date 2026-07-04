@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 import { Header } from "@/components/Header";
+import { PublicPageShell } from "@/components/layout/public-page-shell";
 import { Hero } from "@/components/Hero";
 import { VisitorTracker } from "@/components/analytics/visitor-tracker";
 import { CustomCursor } from "@/components/ui/custom-cursor";
@@ -67,7 +68,7 @@ export default function Home() {
       <VisitorTracker />
       <CustomCursor />
       <PageBackground />
-      <div className="relative z-10">
+      <PublicPageShell>
         <Header />
         <main id="main-content">
           <Hero />
@@ -78,7 +79,7 @@ export default function Home() {
           ))}
         </main>
         <Footer />
-      </div>
+      </PublicPageShell>
     </>
   );
 }

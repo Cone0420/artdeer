@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/Header";
+import { PublicPageShell } from "@/components/layout/public-page-shell";
 import { PageBackground } from "@/components/ui/page-background";
 import { ReviewDetail } from "@/components/Reviews/ReviewDetail";
 import { createPageMetadata } from "@/lib/seo";
@@ -50,13 +51,13 @@ export default async function ReviewDetailPage({ params }: PageProps) {
   return (
     <>
       <PageBackground />
-      <div className="relative z-10">
+      <PublicPageShell>
         <Header />
         <main id="main-content">
           <ReviewDetail id={id} initialItem={item} />
         </main>
         <Footer />
-      </div>
+      </PublicPageShell>
     </>
   );
 }
