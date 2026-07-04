@@ -1,5 +1,8 @@
-/** Canonical production URL (Gabia → Vercel custom domain). */
-export const DEFAULT_SITE_URL = "https://www.artdeer.art";
+/** Primary site URL — metadataBase, canonical, sitemap, robots */
+export const SITE_URL = "https://artdeer.art";
+
+export const METADATA_BASE = SITE_URL;
+export const DEFAULT_SITE_URL = SITE_URL;
 
 function normalizeSiteUrl(url: string) {
   return url.replace(/\/$/, "");
@@ -11,6 +14,7 @@ export const siteConfig = {
   seoTitle: "ART Deer - 게임 · 방송 · 커뮤니티 디자인 전문",
   tagline: "게임 · 방송 · 커뮤니티 디자인 전문",
   description: "게임 · 방송 · 커뮤니티 디자인 전문 플랫폼 ART Deer.",
+  metadataBase: METADATA_BASE,
   url: normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL),
   locale: "ko_KR",
   ogImage: {
@@ -38,6 +42,12 @@ export const siteConfig = {
 
 export function getSiteUrl(path = "") {
   const base = siteConfig.url;
+  const normalized = path.startsWith("/") ? path : path ? `/${path}` : "";
+  return `${base}${normalized}`;
+}
+
+export function getMetadataBaseUrl(path = "") {
+  const base = siteConfig.metadataBase;
   const normalized = path.startsWith("/") ? path : path ? `/${path}` : "";
   return `${base}${normalized}`;
 }

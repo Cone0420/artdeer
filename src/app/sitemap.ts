@@ -4,6 +4,8 @@ import { getServerPortfolioIds } from "@/lib/portfolio-server";
 import { getServerReviewIds } from "@/lib/reviews-server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
   const portfolioIds = isSupabaseConfigured() ? await getServerPortfolioIds() : [];

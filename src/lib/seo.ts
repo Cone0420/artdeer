@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getSiteUrl, siteConfig } from "@/lib/site-config";
+import { getSiteUrl, METADATA_BASE, siteConfig } from "@/lib/site-config";
 
 const { ogImage } = siteConfig;
 
@@ -12,12 +12,24 @@ export const defaultOgImage = {
   type: ogImage.type,
 } as const;
 
+function buildVerification(): Metadata["verification"] {
+  const google = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+  const naver = process.env.NAVER_SITE_VERIFICATION?.trim();
+
+  if (!google && !naver) return undefined;
+
+  return {
+    ...(google ? { google } : {}),
+    ...(naver ? { other: { "naver-site-verification": naver } } : {}),
+  };
+}
+
 /**
  * Root metadata (app/layout.tsx only).
- * Do not duplicate on the home page or in opengraph-image.tsx / twitter-image.tsx.
+ * All URLs use https://artdeer.art (metadataBase, canonical, sitemap, robots).
  */
 export const rootMetadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
+  metadataBase: new URL(METADATA_BASE),
   title: {
     default: siteConfig.seoTitle,
     template: `%s | ${siteConfig.shortName}`,
@@ -52,6 +64,7 @@ export const rootMetadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
@@ -69,6 +82,7 @@ export const rootMetadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: buildVerification(),
   other: {
     "mobile-web-app-capable": "yes",
   },
@@ -103,12 +117,16 @@ export function createPageMetadata({
     description,
     alternates: { canonical: url },
     openGraph: {
+      type: "website",
+      locale: siteConfig.locale,
       url,
+      siteName: siteConfig.shortName,
       title: ogTitle,
       description,
       images: [imageMeta],
     },
     twitter: {
+      card: "summary_large_image",
       title: ogTitle,
       description,
       images: [ogImagePath],
@@ -126,32 +144,41 @@ export function createPageMetadata({
 }
 
 export function createJsonLd() {
-  const url = siteConfig.url;
+  const canonicalUrl = siteConfig.url;
+  const organizationId = `${METADATA_BASE}/#organization`;
+  const websiteId = `${canonicalUrl}/#website`;
 
   return [
     {
       "@context": "https://schema.org",
-      "@type": "WebSite",
-      name: siteConfig.name,
+      "@type": "Organization",
+      "@id": organizationId,
+      name: siteConfig.shortName,
+      legalName: siteConfig.name,
+      url: canonicalUrl,
+      logo: `${METADATA_BASE}${ogImage.path}`,
+      image: `${METADATA_BASE}${ogImage.path}`,
       description: siteConfig.description,
-      url,
+      areaServed: {
+        "@type": "Country",
+        name: "KR",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": websiteId,
+      name: siteConfig.seoTitle,
+      alternateName: siteConfig.name,
+      description: siteConfig.description,
+      url: canonicalUrl,
       inLanguage: "ko-KR",
+      publisher: { "@id": organizationId },
       potentialAction: {
         "@type": "SearchAction",
         target: `${getSiteUrl("/portfolio")}?q={search_term_string}`,
         "query-input": "required name=search_term_string",
       },
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "ProfessionalService",
-      name: siteConfig.name,
-      description: siteConfig.description,
-      url,
-      image: getSiteUrl(ogImage.path),
-      areaServed: "KR",
-      serviceType: "Game Graphic Design",
-      sameAs: [],
     },
   ];
 }

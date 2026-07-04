@@ -1,7 +1,6 @@
 import { InitialLoadingProvider } from "@/components/ui/initial-loading-screen";
 import { createJsonLd, rootMetadata } from "@/lib/seo";
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = rootMetadata;
@@ -25,6 +24,13 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full overflow-x-hidden antialiased">
       <head>
+        {jsonLd.map((schema, index) => (
+          <script
+            key={`json-ld-${index}`}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+        ))}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
         <link
@@ -40,15 +46,6 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full overflow-x-hidden flex flex-col bg-background text-foreground">
-        {jsonLd.map((schema, index) => (
-          <Script
-            key={`json-ld-${index}`}
-            id={`json-ld-${index}`}
-            type="application/ld+json"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-          />
-        ))}
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-full focus:bg-artdear-purple focus:px-4 focus:py-2 focus:text-white"
