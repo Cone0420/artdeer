@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const CANONICAL_SITE = "https://www.artdeer.art";
+const CANONICAL_SITE = "https://artdeer.art";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/:path*",
-        has: [{ type: "host", value: "artdeer.art" }],
+        has: [{ type: "host", value: "www.artdeer.art" }],
         destination: `${CANONICAL_SITE}/:path*`,
         permanent: true,
       },

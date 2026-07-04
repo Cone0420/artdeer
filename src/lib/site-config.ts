@@ -1,5 +1,5 @@
 /** Canonical production URL (Gabia → Vercel custom domain). */
-export const DEFAULT_SITE_URL = "https://www.artdeer.art";
+export const DEFAULT_SITE_URL = "https://artdeer.art";
 
 function normalizeSiteUrl(url: string) {
   return url.replace(/\/$/, "");
@@ -7,21 +7,31 @@ function normalizeSiteUrl(url: string) {
 
 export const siteConfig = {
   name: "아트디어 Art Deer",
-  shortName: "Art Deer",
-  tagline: "GAME GRAPHIC DESIGN STUDIO",
-  description:
-    "게임, 방송, 커뮤니티까지 — 상상하는 모든 디자인을 제작하는 아트디어 게임 그래픽 디자인 스튜디오",
+  shortName: "ART Deer",
+  seoTitle: "ART Deer - 게임 · 방송 · 커뮤니티 디자인 전문",
+  tagline: "게임 · 방송 · 커뮤니티 디자인 전문",
+  description: "게임 · 방송 · 커뮤니티 디자인 전문 플랫폼 ART Deer.",
   url: normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL),
   locale: "ko_KR",
+  ogImage: {
+    path: "/og-image.png",
+    width: 1200,
+    height: 630,
+    alt: "ART Deer",
+    type: "image/png",
+  },
   keywords: [
     "게임 디자인",
     "게임 포스터",
+    "유튜브 디자인",
     "유튜브 썸네일",
-    "채널아트",
+    "캐릭터 디자인",
     "길드마크",
-    "게임 그래픽",
+    "포토광장",
+    "방송 디자인",
+    "커뮤니티 디자인",
     "아트디어",
-    "Art Deer",
+    "ART Deer",
   ],
   twitterHandle: "@artdeer",
 } as const;

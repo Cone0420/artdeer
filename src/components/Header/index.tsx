@@ -24,6 +24,7 @@ import {
   type HeaderNavItem,
 } from "@/lib/header-nav";
 import navStyles from "./HeaderNav.module.css";
+import headerStyles from "./Header.module.css";
 import { SectionHashLink } from "@/components/ui/section-hash-link";
 
 const HEADER_HEIGHT_CLASS = "h-14 sm:h-16 lg:h-[72px]";
@@ -119,7 +120,7 @@ export function Header() {
             "flex h-14 items-center justify-between gap-2 overflow-visible max-md:px-5 sm:h-16 lg:grid lg:h-[72px] lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-4"
           )}
         >
-          <div className="lg:justify-self-start">
+          <div className={cn(headerStyles.logoWrap, "lg:justify-self-start")}>
             <HeaderLogo />
           </div>
 

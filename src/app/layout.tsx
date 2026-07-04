@@ -1,10 +1,10 @@
 import { InitialLoadingProvider } from "@/components/ui/initial-loading-screen";
-import { createJsonLd, createRootMetadata } from "@/lib/seo";
+import { createJsonLd, rootMetadata } from "@/lib/seo";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 
-export const metadata: Metadata = createRootMetadata();
+export const metadata: Metadata = rootMetadata;
 
 export const viewport: Viewport = {
   width: "device-width",

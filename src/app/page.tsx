@@ -5,14 +5,6 @@ import { PublicPageShell } from "@/components/layout/public-page-shell";
 import { Hero } from "@/components/Hero";
 import { VisitorTracker } from "@/components/analytics/visitor-tracker";
 import { CustomCursor } from "@/components/ui/custom-cursor";
-import { createPageMetadata } from "@/lib/seo";
-import { siteConfig } from "@/lib/site-config";
-
-export const metadata = createPageMetadata({
-  title: siteConfig.tagline,
-  description: siteConfig.description,
-  path: "",
-});
 
 const PageBackground = dynamic(
   () => import("@/components/ui/page-background").then((m) => ({ default: m.PageBackground })),

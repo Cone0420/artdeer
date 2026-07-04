@@ -1,0 +1,6 @@
+/* Mobile-only logo nudge — balances visual weight vs. hamburger (768px and below). */
+@media (max-width: 767px) {
+  .logoWrap {
+    transform: translateX(-14px);
+  }
+}

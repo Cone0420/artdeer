@@ -1,130 +1,127 @@
 import type { Metadata } from "next";
 import { getSiteUrl, siteConfig } from "@/lib/site-config";
 
+const { ogImage } = siteConfig;
+
+/** Shared OG/Twitter image — public/og-image.png */
+export const defaultOgImage = {
+  url: ogImage.path,
+  width: ogImage.width,
+  height: ogImage.height,
+  alt: ogImage.alt,
+  type: ogImage.type,
+} as const;
+
+/**
+ * Root metadata (app/layout.tsx only).
+ * Do not duplicate on the home page or in opengraph-image.tsx / twitter-image.tsx.
+ */
+export const rootMetadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: siteConfig.seoTitle,
+    template: `%s | ${siteConfig.shortName}`,
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.shortName,
+  authors: [{ name: siteConfig.shortName, url: siteConfig.url }],
+  creator: siteConfig.shortName,
+  publisher: siteConfig.shortName,
+  keywords: [...siteConfig.keywords],
+  category: "design",
+  alternates: {
+    canonical: getSiteUrl("/"),
+    languages: { "ko-KR": getSiteUrl("/") },
+  },
+  openGraph: {
+    type: "website",
+    locale: siteConfig.locale,
+    url: getSiteUrl("/"),
+    siteName: siteConfig.shortName,
+    title: siteConfig.seoTitle,
+    description: siteConfig.description,
+    images: [defaultOgImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: siteConfig.twitterHandle,
+    creator: siteConfig.twitterHandle,
+    title: siteConfig.seoTitle,
+    description: siteConfig.description,
+    images: [ogImage.path],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
 type PageSeoOptions = {
   title: string;
   description?: string;
-  path?: string;
+  path: string;
   noIndex?: boolean;
   ogImage?: string;
 };
 
-const defaultOgImage = {
-  url: "/opengraph-image",
-  width: 1200,
-  height: 630,
-  alt: siteConfig.name,
-  type: "image/png",
-} as const;
-
-export function createRootMetadata(): Metadata {
-  const url = getSiteUrl("/");
-
-  return {
-    metadataBase: new URL(siteConfig.url),
-    title: {
-      default: `${siteConfig.name} - ${siteConfig.tagline}`,
-      template: `%s | ${siteConfig.name}`,
-    },
-    description: siteConfig.description,
-    applicationName: siteConfig.shortName,
-    authors: [{ name: siteConfig.name, url: siteConfig.url }],
-    creator: siteConfig.name,
-    publisher: siteConfig.name,
-    keywords: [...siteConfig.keywords],
-    category: "design",
-    alternates: {
-      canonical: url,
-      languages: { "ko-KR": url },
-    },
-    openGraph: {
-      type: "website",
-      locale: siteConfig.locale,
-      url,
-      siteName: siteConfig.name,
-      title: `${siteConfig.name} - ${siteConfig.tagline}`,
-      description: siteConfig.description,
-      images: [defaultOgImage],
-    },
-    twitter: {
-      card: "summary_large_image",
-      site: siteConfig.twitterHandle,
-      creator: siteConfig.twitterHandle,
-      title: `${siteConfig.name} - ${siteConfig.tagline}`,
-      description: siteConfig.description,
-      images: ["/twitter-image"],
-    },
-    icons: {
-      icon: [
-        { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      ],
-      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    },
-    manifest: "/manifest.webmanifest",
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        "max-video-preview": -1,
-        "max-image-preview": "large",
-        "max-snippet": -1,
-      },
-    },
-    other: {
-      "mobile-web-app-capable": "yes",
-    },
-  };
-}
-
+/** Child-page metadata overrides (merged with rootMetadata in layout). */
 export function createPageMetadata({
   title,
   description = siteConfig.description,
-  path = "",
+  path,
   noIndex = false,
-  ogImage = "/opengraph-image",
+  ogImage: ogImagePath = ogImage.path,
 }: PageSeoOptions): Metadata {
-  const isHome = !path || path === "/";
-  const url = getSiteUrl(isHome ? "/" : path);
-  const pageTitle = isHome ? `${siteConfig.name} - ${siteConfig.tagline}` : title;
-  const ogTitle = isHome ? pageTitle : `${title} | ${siteConfig.name}`;
+  const url = getSiteUrl(path);
+  const ogTitle = `${title} | ${siteConfig.shortName}`;
+  const imageMeta = {
+    ...defaultOgImage,
+    url: ogImagePath,
+    alt: ogTitle,
+  };
 
   return {
-    title: isHome ? pageTitle : title,
+    title,
     description,
-    keywords: [...siteConfig.keywords],
     alternates: { canonical: url },
     openGraph: {
-      type: "website",
-      locale: siteConfig.locale,
       url,
-      siteName: siteConfig.name,
       title: ogTitle,
       description,
-      images: [{ ...defaultOgImage, url: ogImage, alt: ogTitle }],
+      images: [imageMeta],
     },
     twitter: {
-      card: "summary_large_image",
-      site: siteConfig.twitterHandle,
-      creator: siteConfig.twitterHandle,
       title: ogTitle,
       description,
-      images: [ogImage === "/opengraph-image" ? "/twitter-image" : ogImage],
+      images: [ogImagePath],
     },
-    robots: noIndex
-      ? { index: false, follow: false, googleBot: { index: false, follow: false } }
-      : {
-          index: true,
-          follow: true,
-          googleBot: {
-            index: true,
-            follow: true,
-            "max-image-preview": "large",
-            "max-snippet": -1,
+    ...(noIndex
+      ? {
+          robots: {
+            index: false,
+            follow: false,
+            googleBot: { index: false, follow: false },
           },
-        },
+        }
+      : {}),
   };
 }
 
@@ -151,10 +148,15 @@ export function createJsonLd() {
       name: siteConfig.name,
       description: siteConfig.description,
       url,
-      image: getSiteUrl("/opengraph-image"),
+      image: getSiteUrl(ogImage.path),
       areaServed: "KR",
       serviceType: "Game Graphic Design",
       sameAs: [],
     },
   ];
+}
+
+/** @deprecated Use rootMetadata in app/layout.tsx */
+export function createRootMetadata(): Metadata {
+  return rootMetadata;
 }
