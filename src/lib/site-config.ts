@@ -1,5 +1,5 @@
 /** Canonical production URL (Gabia → Vercel custom domain). */
-export const DEFAULT_SITE_URL = "https://artdeer.art";
+export const DEFAULT_SITE_URL = "https://www.artdeer.art";
 
 function normalizeSiteUrl(url: string) {
   return url.replace(/\/$/, "");
