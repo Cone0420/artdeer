@@ -18,14 +18,10 @@ const nextConfig: NextConfig = {
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  // www.artdeer.art → artdeer.art is handled by Vercel domain redirect (308).
+  // Only redirect the default *.vercel.app hostname here.
   async redirects() {
     return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.artdeer.art" }],
-        destination: `${CANONICAL_SITE}/:path*`,
-        permanent: true,
-      },
       {
         source: "/:path*",
         has: [{ type: "host", value: "artdeer.vercel.app" }],
